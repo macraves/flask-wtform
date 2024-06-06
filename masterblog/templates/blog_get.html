@@ -1,0 +1,21 @@
+{% extends 'base.html' %}{% block content %}
+<div class="card" style="width: 18rem">
+	<div class="card-body">
+		<h5 class="card-title">{{ blog.title }}</h5>
+		<h6 class="card-subtitle mb-2 text-body-secondary">{{ blog.author }}</h6>
+		<p class="card-text">{{ blog.content}}</p>
+		{% if blog.get("like")%}
+		<p class="card-text">{{ blog.like }}</p>
+		{% endif %}
+		<a href="{{ url_for('blog.blog_like', idx=blog.id) }}" class="btn btn-primary"
+			>Like</a
+		>
+		<a href="{{ url_for('blog.blog_update', idx=blog.id) }}" class="btn btn-warning"
+			>Update</a
+		>
+		<a href="{{ url_for('blog.blog_delete',idx=blog.id) }}" class="btn btn-danger"
+			>Delete</a
+		>
+	</div>
+</div>
+{% endblock %}
