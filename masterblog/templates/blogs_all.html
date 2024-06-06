@@ -1,0 +1,24 @@
+{% extends 'base.html' %}{% block content %}
+<div class="col-4 shadow">
+	{% if blogs %}
+    <table class="table table-striped-columns table-hover">
+        <thead>
+          <tr>
+            <th scope="col">#</th>
+            <th scope="col">Author</th>
+            <th scope="col">Title</th>
+          </tr>
+        </thead>
+        <tbody>
+    {% for blog in blogs %}
+          <tr>
+            <th scope="row">{{ blog.id }}</th>
+            <td><a href="{{ url_for('blog.get_blog', idx=blog.id)}}">{{ blog.author }}</a></td>
+            <td>{{ blog.title }}</td>
+          </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}<h2>No blogs entry{% endif %}
+</div>
+{% endblock %}
