@@ -1,0 +1,38 @@
+{% extends 'base.html' %}{% block content %}
+<h1>ALL USERS</h1>
+<div class="shadow p-3 mb-5 bg-body-tertiary rounded col-8">
+	{% for user in users %}
+	<table class="table table-hover table-bordered table-striped">
+		<tr>
+			<td>
+				<div>
+					{{ user.id }}.
+					<a href="{{url_for('user.user_update',user_id=user.id)}}"> {{ user.name }}</a>
+					<div><strong>user ID:</strong> {{ user.id}}</div>
+				</div>
+				<div><strong>name:</strong> {{ user.name }}</div>
+				<div><strong>user name:</strong> {{ user.username }}</div>
+				<div><strong>email:</strong> {{ user.email }}</div>
+				<div><strong>about user:</strong> {{ user.about_user }}</div>
+				{% if current_user.id == 1 or current_user.id == user.id %}
+				<div><strong>date joined:</strong> {{ user.added_date }}</div>
+				<br />
+				<div>
+					<a
+						href="{{url_for('user.user_update', user_id=user.id)}}"
+						class="btn btn-primary"
+						>Update</a
+					>
+					<a
+						href="{{url_for('user.user_delete', user_id=user.id)}}"
+						class="btn btn-danger"
+						>Delete</a
+					>
+				</div>
+				{% endif %}
+			</td>
+		</tr>
+	</table>
+	{% endfor %}
+</div>
+{% endblock%}
