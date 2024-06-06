@@ -1,0 +1,30 @@
+{
+    "version": 1.0,
+    "posts": [
+        {
+            "id": 2,
+            "title": "Ufulo",
+            "content": "Tfqueltaad"
+        },
+        {
+            "id": 3,
+            "title": "Kyqym",
+            "content": "Ufksbtsgyc"
+        },
+        {
+            "id": 4,
+            "title": "Psoku",
+            "content": "Jrkjoklvzo"
+        },
+        {
+            "id": 5,
+            "title": "Ynrbs",
+            "content": "Qcnpjbupwe"
+        },
+        {
+            "title": "Mira",
+            "content": "Babasinin Gunlugu",
+            "id": 1
+        }
+    ]
+}
