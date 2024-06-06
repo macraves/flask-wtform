@@ -1,0 +1,17 @@
+{% extends 'base.html' %}{% block content %}
+
+<div class="shadow p-3 mb-5 bg-body-tertiary rounded col-6 container">
+	{{ recommendation | safe }}
+	<form method="POST">
+		{{ form.hidden_tag() }}
+		<div>
+			{{ form.title.label(class="form-label") }}{{ form.title(class="form-control") }}
+		</div>
+		<div>
+			{{ form.prompt.label(class="form-label") }}{{ form.prompt(class="form-control") }}
+		</div>
+		<br />
+		<div id="margin-up">{{ form.submit(class="btn btn-primary") }}</div>
+	</form>
+</div>
+{% endblock %}
