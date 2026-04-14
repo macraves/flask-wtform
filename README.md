@@ -14,11 +14,11 @@ Professional portfolio showcasing full-stack Flask applications, REST APIs, data
 | Project | Description | Tech Stack | Status | Quick Start |
 |---------|-------------|------------|--------|-------------|
 | **[backend_api](./backend_api)** | REST API with version control system for blog posts | Flask, Flask-CORS, Faker | ✅ Complete | [View README](./backend_api/readme.md) |
-| **[db_app_api](./db_app_api)** | Full-stack library management system with admin controls | Flask, SQLAlchemy, WTForms, CKEditor | ✅ Complete | [View README](./db_app_api/Library%20app/readme.md) |
-| **[first-deployment](./first-deployment)** | Production-ready library app with Gunicorn | Flask, SQLAlchemy, Gunicorn | ✅ Complete | [View README](./first-deployment/readme.md) |
+| **[db_app_api](./db_app_api)** | Full-stack library management system with admin controls | Flask, SQLAlchemy, WTForms, CKEditor | ✅ Complete | [View README](./db_app_api/library_app/readme.md) |
+| **[library_app_production](./library_app_production)** | Production-ready library app with Gunicorn | Flask, SQLAlchemy, Gunicorn | ✅ Complete | [View README](./library_app_production/readme.md) |
 | **[masterblog](./masterblog)** | Simple blog CRUD with JSON storage | Flask, WTForms | ✅ Complete | [View README](./masterblog/README.md) |
-| **[movie_wep_app_multi_storage_support](./movie_wep_app_multi_storage_support)** | Movie management with multi-storage support (SQLite/JSON/CSV) | Flask, SQLAlchemy, Flask-Login, OMDb API | ✅ Complete | [View README](./movie_wep_app_multi_storage_support/README.md) |
-| **[data_scientiest](./data_scientiest)** | SQLite flight data analysis with visualizations | SQLite3, SQLAlchemy, matplotlib, folium | ✅ Complete | [View README](./data_scientiest/readme.md) |
+| **[movie_web_app_multi_storage](./movie_web_app_multi_storage)** | Movie management with multi-storage support (SQLite/JSON/CSV) | Flask, SQLAlchemy, Flask-Login, OMDb API | ✅ Complete | [View README](./movie_web_app_multi_storage/README.md) |
+| **[data_scientist](./data_scientist)** | SQLite flight data analysis with visualizations | SQLite3, SQLAlchemy, matplotlib, folium | ✅ Complete | [View README](./data_scientist/readme.md) |
 | **[Best-Buy](./Best-Buy)** | E-commerce inventory management CLI (Python OOP) | Python, unittest | ✅ Complete | [View README](./Best-Buy/README.md) |
 | **[storage-app-user](./storage-app-user)** | Movie collection manager CLI with API integration | Python, Requests, OMDb API | ✅ Complete | [View README](./storage-app-user/README.md) |
 
@@ -108,10 +108,10 @@ python app.py  # or main.py depending on project
 ## Project Highlights
 
 ### Advanced Features
-- **Abstract Storage Pattern**: Implemented in `movie_wep_app_multi_storage_support` for seamless switching between SQLite, JSON, and CSV backends
+- **Abstract Storage Pattern**: Implemented in `movie_web_app_multi_storage` for seamless switching between SQLite, JSON, and CSV backends
 - **API Versioning**: Custom version control system in `backend_api` supporting multiple data schemas
 - **Role-Based Access**: Admin controls in `db_app_api` with user-specific permissions
-- **Production Ready**: Environment-based configuration in `first-deployment` with Gunicorn integration
+- **Production Ready**: Environment-based configuration in `library_app_production` with Gunicorn integration
 
 ### Best Practices
 - Parameterized queries for SQL injection prevention
