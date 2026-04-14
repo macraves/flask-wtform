@@ -11,22 +11,23 @@ Professional portfolio showcasing full-stack Flask applications, REST APIs, data
 
 ## Projects Overview
 
-| Project | Description | Tech Stack | Status | Quick Start |
-|---------|-------------|------------|--------|-------------|
-| **[backend_api](./backend_api)** | REST API with version control system for blog posts | Flask, Flask-CORS, Faker | ✅ Complete | [View README](./backend_api/readme.md) |
-| **[db_app_api](./db_app_api)** | Full-stack library management system with admin controls | Flask, SQLAlchemy, WTForms, CKEditor | ✅ Complete | [View README](./db_app_api/library_app/readme.md) |
-| **[library_app_production](./library_app_production)** | Production-ready library app with Gunicorn | Flask, SQLAlchemy, Gunicorn | ✅ Complete | [View README](./library_app_production/readme.md) |
-| **[masterblog](./masterblog)** | Simple blog CRUD with JSON storage | Flask, WTForms | ✅ Complete | [View README](./masterblog/README.md) |
+| Project                                                          | Description                                                   | Tech Stack                               | Status      | Quick Start                                            |
+| ---------------------------------------------------------------- | ------------------------------------------------------------- | ---------------------------------------- | ----------- | ------------------------------------------------------ |
+| **[backend_api](./backend_api)**                                 | REST API with version control system for blog posts           | Flask, Flask-CORS, Faker                 | ✅ Complete | [View README](./backend_api/readme.md)                 |
+| **[db_app_api](./db_app_api)**                                   | Full-stack library management system with admin controls      | Flask, SQLAlchemy, WTForms, CKEditor     | ✅ Complete | [View README](./db_app_api/library_app/readme.md)      |
+| **[library_app_production](./library_app_production)**           | Production-ready library app with Gunicorn                    | Flask, SQLAlchemy, Gunicorn              | ✅ Complete | [View README](./library_app_production/readme.md)      |
+| **[masterblog](./masterblog)**                                   | Simple blog CRUD with JSON storage                            | Flask, WTForms                           | ✅ Complete | [View README](./masterblog/README.md)                  |
 | **[movie_web_app_multi_storage](./movie_web_app_multi_storage)** | Movie management with multi-storage support (SQLite/JSON/CSV) | Flask, SQLAlchemy, Flask-Login, OMDb API | ✅ Complete | [View README](./movie_web_app_multi_storage/README.md) |
-| **[data_scientist](./data_scientist)** | SQLite flight data analysis with visualizations | SQLite3, SQLAlchemy, matplotlib, folium | ✅ Complete | [View README](./data_scientist/readme.md) |
-| **[Best-Buy](./Best-Buy)** | E-commerce inventory management CLI (Python OOP) | Python, unittest | ✅ Complete | [View README](./Best-Buy/README.md) |
-| **[storage-app-user](./storage-app-user)** | Movie collection manager CLI with API integration | Python, Requests, OMDb API | ✅ Complete | [View README](./storage-app-user/README.md) |
+| **[data_scientist](./data_scientist)**                           | SQLite flight data analysis with visualizations               | SQLite3, SQLAlchemy, matplotlib, folium  | ✅ Complete | [View README](./data_scientist/readme.md)              |
+| **[Best-Buy](./Best-Buy)**                                       | E-commerce inventory management CLI (Python OOP)              | Python, unittest                         | ✅ Complete | [View README](./Best-Buy/README.md)                    |
+| **[storage-app-user](./storage-app-user)**                       | Movie collection manager CLI with API integration             | Python, Requests, OMDb API               | ✅ Complete | [View README](./storage-app-user/README.md)            |
 
 ---
 
 ## Key Skills Demonstrated
 
 ### Backend Development
+
 - RESTful API design and implementation
 - Version control in APIs
 - Database design and ORM (SQLAlchemy)
@@ -34,12 +35,14 @@ Professional portfolio showcasing full-stack Flask applications, REST APIs, data
 - Blueprint architecture for modular Flask apps
 
 ### Data Management
+
 - Multi-storage backend abstraction (SQLite, JSON, CSV)
 - Database migrations (Flask-Migrate, Alembic)
 - Parameterized SQL queries (SQL injection prevention)
 - Relational database design with foreign keys
 
 ### Frontend Integration
+
 - WTForms for form validation
 - Bootstrap for responsive design
 - CKEditor for rich text editing
@@ -47,12 +50,14 @@ Professional portfolio showcasing full-stack Flask applications, REST APIs, data
 - Session management
 
 ### DevOps & Deployment
+
 - Gunicorn WSGI server configuration
 - Environment variable management
 - Production vs development configurations
 - CORS handling
 
 ### Data Science & Visualization
+
 - SQLite3 data analysis
 - Matplotlib for charts
 - Folium for geographic visualizations
@@ -108,12 +113,14 @@ python app.py  # or main.py depending on project
 ## Project Highlights
 
 ### Advanced Features
+
 - **Abstract Storage Pattern**: Implemented in `movie_web_app_multi_storage` for seamless switching between SQLite, JSON, and CSV backends
 - **API Versioning**: Custom version control system in `backend_api` supporting multiple data schemas
 - **Role-Based Access**: Admin controls in `db_app_api` with user-specific permissions
 - **Production Ready**: Environment-based configuration in `library_app_production` with Gunicorn integration
 
 ### Best Practices
+
 - Parameterized queries for SQL injection prevention
 - Blueprint architecture for scalable Flask applications
 - Comprehensive error handling with custom exception classes
