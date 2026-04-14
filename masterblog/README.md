@@ -8,7 +8,7 @@ To get started with this project, follow these steps:
 
 1. Clone the repository.
 2. Install the necessary dependencies.
-   "pip install -r requiremnts"
+   "pip install -r requirements.txt"
 3. Run the project.
 
 ## Usage
