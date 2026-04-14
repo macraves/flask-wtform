@@ -1,0 +1,6 @@
+# Best-Buy Store Management System
+# This project uses only Python standard library
+# No external dependencies required
+
+# For running unit tests (included in Python stdlib):
+# - unittest

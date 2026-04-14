@@ -6,7 +6,7 @@
 - [Technologies](#technologies)
 - [Setup](#setup)
 
-### Genreal Info
+### General Info
 
 The program is designed to perform CRUD work on the API. Since I expected that the given project would change every time,
 I tried to add version control from beginning. It was really fun to encounter many tutorial problems in terms of version control.
@@ -31,4 +31,4 @@ flask_cors - https://flask-cors.readthedocs.io/en/latest/
 To install project packages, `pip install -r requirements.txt`
 to run `backend` `backend_py.py`
 port for backend is 5002
-port for forntend is 5001
+port for frontend is 5001
