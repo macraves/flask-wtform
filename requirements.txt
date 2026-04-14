@@ -1,0 +1,10 @@
+# Unified requirements.txt for all subprojects
+# (Manually aggregate from all subproject requirements.txt)
+Flask>=1.1.0
+Flask-Cors
+SQLAlchemy
+requests
+Werkzeug
+matplotlib
+folium
+# Add more as needed from subproject requirements.txt files
