@@ -75,20 +75,22 @@ def check_version(version: float):
         save_json(initilization)
         print(f"File {FILE_PATH} created")
     exists_data = read_json()
-    if version == 1.0 and exists_data.get("version") != version:
-        exists_data["version"] = version
-        create_test_posts(version)
-        print(f"Version is updataed to {version}")
-    else:
+    if exists_data is None:
+        # Unreadable file: leave it untouched rather than overwrite real data.
+        print(f"Version check skipped, {FILE_PATH} is unreadable")
+        return
+    if exists_data.get("version") == version:
         print(f"Version is up to date {version}")
-    if version == 1.1 and exists_data.get("version") != version:
-        exists_data["version"] = version
+        return
+    # Existing posts are never replaced; only the version field and the
+    # missing keys of the target version are added.
+    exists_data["version"] = version
+    if version == 1.1:
         add_new_keys_in_posts("date", generate_random_date, exists_data)
-        print(f"Version is updataed to {version}")
-    if version == 1.2 and exists_data.get("version") != version:
-        exists_data["version"] = version
+    elif version == 1.2:
         add_new_keys_in_posts("author", add_fake_authors, exists_data)
-        print(f"Version is updataed to {version}")
+    save_json(exists_data)
+    print(f"Version is updataed to {version}")
 
 
 def generate_random_word(length: int) -> str:
@@ -131,9 +133,8 @@ def add_new_keys_in_posts(key, value, data):
         value (func): appropiate function to create value
     """
     if len(data["posts"]) > 0:
-        generator = ({**d, key: value()} for d in data["posts"])
+        generator = ({key: value(), **d} for d in data["posts"])
         data["posts"] = list(generator)
-        save_json(data)
 
 
 def generate_new_id(posts: list):
