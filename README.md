@@ -1,148 +1,52 @@
-# Flask & Python Portfolio
+# Flask & Python Projects
 
-Professional portfolio showcasing full-stack Flask applications, REST APIs, database management, and Python development skills.
+Eight small projects from my path into Python backend development: Flask web apps and APIs, SQLAlchemy models, and command-line tools. They are learning projects, not production systems. This page says what each one contains and where the rough edges are.
 
-[![Python](https://img.shields.io/badge/Python-3.8%2B-blue.svg)](https://www.python.org/)
-[![Flask](https://img.shields.io/badge/Flask-3.0%2B-green.svg)](https://flask.palletsprojects.com/)
-[![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0-red.svg)](https://www.sqlalchemy.org/)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+## Flagship
 
----
+**[library_app_production](./library_app_production)** is the project to look at first: a Flask app for authors, books and posts with user accounts, owner-or-admin authorization, CSRF protection, sanitised rich-text input, and configuration through environment variables. Its README lists exactly what it does, how to run it, and its known bugs. It has no automated test suite yet and has not been deployed.
 
-## Projects Overview
+## Other projects
 
-| Project                                                          | Description                                                   | Tech Stack                               | Status      | Quick Start                                            |
-| ---------------------------------------------------------------- | ------------------------------------------------------------- | ---------------------------------------- | ----------- | ------------------------------------------------------ |
-| **[backend_api](./backend_api)**                                 | REST API with version control system for blog posts           | Flask, Flask-CORS, Faker                 | ✅ Complete | [View README](./backend_api/readme.md)                 |
-| **[db_app_api](./db_app_api)**                                   | Full-stack library management system with admin controls      | Flask, SQLAlchemy, WTForms, CKEditor     | ✅ Complete | [View README](./db_app_api/library_app/readme.md)      |
-| **[library_app_production](./library_app_production)**           | Production-ready library app with Gunicorn                    | Flask, SQLAlchemy, Gunicorn              | ✅ Complete | [View README](./library_app_production/readme.md)      |
-| **[masterblog](./masterblog)**                                   | Simple blog CRUD with JSON storage                            | Flask, WTForms                           | ✅ Complete | [View README](./masterblog/README.md)                  |
-| **[movie_web_app_multi_storage](./movie_web_app_multi_storage)** | Movie management with multi-storage support (SQLite/JSON/CSV) | Flask, SQLAlchemy, Flask-Login, OMDb API | ✅ Complete | [View README](./movie_web_app_multi_storage/README.md) |
-| **[data_scientist](./data_scientist)**                           | SQLite flight data analysis with visualizations               | SQLite3, SQLAlchemy, matplotlib, folium  | ✅ Complete | [View README](./data_scientist/readme.md)              |
-| **[Best-Buy](./Best-Buy)**                                       | E-commerce inventory management CLI (Python OOP)              | Python, unittest                         | ✅ Complete | [View README](./Best-Buy/README.md)                    |
-| **[storage-app-user](./storage-app-user)**                       | Movie collection manager CLI with API integration             | Python, Requests, OMDb API               | ✅ Complete | [View README](./storage-app-user/README.md)            |
+These are learning exercises. Each README says so and lists its known limitations.
 
----
+| Project | What it is | Built with | Tests |
+| --- | --- | --- | --- |
+| [Best-Buy](./Best-Buy) | Store inventory CLI: three product types, three promotion types, a shopping cart and order totals | Python, `unittest` | 20 unit tests |
+| [backend_api](./backend_api) | Blog post REST API (list, search, add, update, delete) with a small Flask front end | Flask, Flask-CORS, Faker | none |
+| [masterblog](./masterblog) | Blog with create, read, update, delete and like, storing posts in a JSON file | Flask, WTForms, CKEditor | none |
+| [db_app_api/library_app](./db_app_api) | The development predecessor of the flagship: the same library site with the same hardening | Flask, SQLAlchemy, Flask-Login, WTForms, CKEditor | none |
+| [movie_web_app_multi_storage](./movie_web_app_multi_storage) | Movie collection app whose users choose SQLite, JSON or CSV storage, with a JSON API | Flask, SQLAlchemy, Flask-Login, OMDb API | manual script |
+| [storage-app-user](./storage-app-user) | Command-line movie collection manager using the OMDb API | Python, Requests | none |
+| [data_scientist](./data_scientist) | Flight delay analysis. It now lives in its own repository: [flight-data-analysis](https://github.com/macraves/flight-data-analysis) | SQLAlchemy, matplotlib, seaborn, folium, Flask | in the new repo |
 
-## Key Skills Demonstrated
+Each project has its own `requirements.txt` and README. Entry points: `Best-Buy/main.py`, `masterblog/app.py`, `db_app_api/library_app/app.py`, `library_app_production/main.py`, `storage-app-user/movie_user_app.py`, `movie_web_app_multi_storage/moviewebapp_latest/main.py`, and for the blog API `backend_api/FLASK-APIs/backend/backend_app.py`.
 
-### Backend Development
+## What the code shows
 
-- RESTful API design and implementation
-- Version control in APIs
-- Database design and ORM (SQLAlchemy)
-- Authentication and authorization (Flask-Login)
-- Blueprint architecture for modular Flask apps
+- **Storage behind an interface.** `movie_web_app_multi_storage` defines an abstract `DataManagmentInterface` (in `datamanagement/storage_inheritance.py`) with separate SQLite, JSON and CSV managers. The app picks one when the user logs in.
+- **Flask Blueprints.** The library app splits authors, books, posts and users into four Blueprints, each with its own routes and templates.
+- **Authentication.** Flask-Login handles sessions in the library and movie apps.
+- **Parameterised queries.** The flight analysis project passes values to SQL as bound parameters, and its tests check an injection-style input.
+- **Object-oriented design.** `Best-Buy` uses an abstract promotion base class with percentage-discount, second-half-price and third-one-free subclasses.
+- **Authorization and web security.** The library apps check owner-or-admin rights in one module (`permissions.py`), require a CSRF token on every POST, sanitise rich-text post content with `nh3`, and accept only POST for deletes and logout. The movie apps check that users can only change their own accounts and movies.
+- **Environment-based config.** No API key or secret is hard-coded: `SECRET_KEY` and the OMDb and RapidAPI keys come from environment variables or a local `.env` (each project that needs one ships a `.env.example`). `library_app_production` refuses to start without `SECRET_KEY`; the other Flask apps warn and fall back to a random key. Its `Procfile` runs `gunicorn main:app`, which I have not deployed.
+- **Documentation habits.** A script I ran over the repo counted 571 functions: 86% have a docstring and 27% have type hints.
 
-### Data Management
+## Known gaps
 
-- Multi-storage backend abstraction (SQLite, JSON, CSV)
-- Database migrations (Flask-Migrate, Alembic)
-- Parameterized SQL queries (SQL injection prevention)
-- Relational database design with foreign keys
+I would rather list these than have a reviewer find them.
 
-### Frontend Integration
-
-- WTForms for form validation
-- Bootstrap for responsive design
-- CKEditor for rich text editing
-- Jinja2 templating
-- Session management
-
-### DevOps & Deployment
-
-- Gunicorn WSGI server configuration
-- Environment variable management
-- Production vs development configurations
-- CORS handling
-
-### Data Science & Visualization
-
-- SQLite3 data analysis
-- Matplotlib for charts
-- Folium for geographic visualizations
-- Data transformation and aggregation
-
----
-
-## Quick Start
-
-Each project contains its own `requirements.txt` and detailed README. General setup:
-
-```bash
-# Clone repository
-git clone https://github.com/macraves/flask-wtform.git
-cd flask-wtform
-
-# Navigate to specific project
-cd [project-name]
-
-# Create virtual environment (recommended)
-python -m venv venv
-source venv/bin/activate  # On Windows: venv\Scripts\activate
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Run application (check project README for specific commands)
-python app.py  # or main.py depending on project
-```
-
----
-
-## Technology Stack
-
-**Backend**: Python 3.8+, Flask 3.0+, SQLAlchemy 2.0, Flask-Login, Flask-Migrate
-
-**Forms & Validation**: Flask-WTF, WTForms
-
-**Database**: SQLite3, MySQL (configurable)
-
-**Frontend**: Bootstrap, Jinja2, CKEditor
-
-**APIs**: Flask-CORS, Requests, OMDb API
-
-**Data Science**: matplotlib, folium, pandas
-
-**Testing**: unittest, Faker
-
-**Deployment**: Gunicorn
-
----
-
-## Project Highlights
-
-### Advanced Features
-
-- **Abstract Storage Pattern**: Implemented in `movie_web_app_multi_storage` for seamless switching between SQLite, JSON, and CSV backends
-- **API Versioning**: Custom version control system in `backend_api` supporting multiple data schemas
-- **Role-Based Access**: Admin controls in `db_app_api` with user-specific permissions
-- **Production Ready**: Environment-based configuration in `library_app_production` with Gunicorn integration
-
-### Best Practices
-
-- Parameterized queries for SQL injection prevention
-- Blueprint architecture for scalable Flask applications
-- Comprehensive error handling with custom exception classes
-- Type hints and docstrings for code documentation
-- Unit testing coverage
-
----
-
-## Contact & Links
-
-**GitHub**: [@macraves](https://github.com/macraves)
-
-**Repository**: [flask-wtform](https://github.com/macraves/flask-wtform)
-
----
+- **Testing is thin.** Only `Best-Buy` has real automated tests (20, all passing). The movie app's `test_backend.py` is a manual script that needs the server running. The Flask apps have no tests.
+- **Admin access is one hard-coded check.** In the library apps, `/users/admin` allows the user whose ID is `1`. There are no roles.
+- **Known bugs are documented, not all fixed.** The library apps crash on the book update page and on an empty search; the movie app's add-review route returns 500; `backend_api` never sorts by title or content. Each project README lists its own bugs with the file and line.
+- **Python version.** The library apps pin a SQLAlchemy release that does not import on Python 3.14. They were run on Python 3.12.
+- **Plaintext passwords in the movie apps.** For JSON storage, `moviewebapp_latest` writes the password to `registry/registry.json` unhashed, and the older `using session` variant stores plaintext passwords throughout. `storage-app-user` and the library apps hash passwords.
+- **Migrations are wired up but unused.** Flask-Migrate is initialised in the library apps, but there is no `migrations/` folder, so schema changes were not tracked.
+- **A misleading name.** In the library apps, `MYSQL_URI` actually holds a SQLite path. Nothing here connects to MySQL.
+- **Version handling in `backend_api` is simple.** A `VERSION` dictionary maps `"0"` to an in-memory post list and `"1.0"`, `"1.1"` and `"1.2"` to the same JSON loader. It is a version switch, not a schema-migration system.
+- **How the READMEs were checked.** Each project README was rewritten from the code, then re-checked by a second reviewer who ran the setup steps and the documented routes on a clean copy. Real OMDb and RapidAPI calls were not exercised (no keys were used), and `gunicorn` and the `Procfile` were not run.
 
 ## License
 
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
-
----
-
-## Acknowledgments
-
-Projects developed as part of continuous learning in web development and software engineering. Special thanks to the Flask and SQLAlchemy communities.
+MIT. See [LICENSE](LICENSE).

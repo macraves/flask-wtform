@@ -1,395 +1,164 @@
-# Library Management System - Production Deployment
+# Library App
 
-Production-ready version of the library management system with environment-based configuration and Gunicorn WSGI server.
+A Flask web application for managing authors, books and blog-style posts, with user accounts, search and optional book cover lookup by ISBN.
 
-![Python](https://img.shields.io/badge/Python-3.8%2B-blue.svg)
-![Flask](https://img.shields.io/badge/Flask-3.0-green.svg)
-![Gunicorn](https://img.shields.io/badge/Gunicorn-WSGI-blue.svg)
+Status: the main project of this repository. It is a learning project and is not production-ready (see [Known limitations](#known-limitations)).
 
----
+## What it does
 
-## Overview
+- **Authors**: any logged-in user can add an author; only the admin can edit or delete one. Deleting an author also deletes that author's books.
+- **Books**: logged-in users add books (title, author, ISBN, publication date, condition, rating from 0 to 5). If `RAPIDAPI_KEY` is set and an ISBN is entered, the cover URL is requested from the RapidAPI Book Cover API (`book/book_api.py`). Without the key, books are saved with no cover. The book list can be sorted by title or author.
+- **Posts**: logged-in users write posts with a CKEditor rich-text field. HTML is sanitised when rendered.
+- **Users**: registration, login, logout, a dashboard to edit your own profile, and an admin overview page.
+- **Search**: the navbar search box posts to `/books/search`. A post content search also exists as a POST endpoint (`/posts/search`), but no page in the UI links to it.
 
-Production-optimized deployment of the full-stack Flask library management system. Features environment variable configuration for secure credential management, Gunicorn WSGI server for production performance, and deployment-ready structure for platforms like Heroku, Railway, or Render.
+## Security measures in the code
 
----
+- **Authorization**: `permissions.py` provides `can_modify(owner_id)` (record owner or admin). It guards book, post and user update and delete. Author update and delete, and the `/users/admin` page, are admin only.
+- **CSRF**: `CSRFProtect(app)` in `main.py` requires a token on every POST. Forms use `form.hidden_tag()`; the delete and logout buttons in `templates/_macros.html` include `csrf_token()`. A failed check is handled by a `CSRFError` handler that flashes a message and redirects to `/`.
+- **XSS**: post content is passed through the `sanitize_html` Jinja filter (`nh3.clean`) wherever it is rendered. Flash messages that include user input are built with `Markup(...).format(...)`, which escapes the inserted value.
+- **State-changing routes are POST only**: all delete routes and logout accept POST only (a GET returns 405).
+- **Secrets from the environment**: `SECRET_KEY`, the database URI and `RAPIDAPI_KEY` are read from environment variables (loaded from `.env` by `python-dotenv`). The app raises `RuntimeError` at startup if `SECRET_KEY` is empty or unset.
+- **Passwords**: stored as hashes using `werkzeug.security.generate_password_hash` with its defaults. With the pinned Werkzeug 3.1.6 this produced `scrypt:` hashes (checked), not PBKDF2. The plain password is never readable from the model.
+- **Database access**: SQLAlchemy ORM through Flask-SQLAlchemy, with no hand-built SQL strings.
 
-## Key Differences from Development Version
+## Quick start
 
-| Feature | Development (`db_app_api`) | Production (This Version) |
-|---------|---------------------------|---------------------------|
-| **Configuration** | Hardcoded in `app.py` | Environment variables |
-| **Server** | Flask dev server | Gunicorn WSGI |
-| **Secret Key** | Static string | Environment variable |
-| **Database URI** | Hardcoded path | Environment variable |
-| **Entry Point** | `app.py` | `main.py` |
-| **Deployment** | Local only | Platform-ready (Heroku, etc.) |
+Tested on Python 3.12.6 on Windows. Python 3.14 does not work with the pinned dependencies (see [Known limitations](#known-limitations)), so create the virtual environment with Python 3.12 explicitly: on a machine where plain `python` is 3.14, `python -m venv .venv` builds a broken environment. Python 3.11 and macOS/Linux were not tested.
 
----
+From the repository root, in PowerShell:
 
-## Features
-
-All features from the base library management system, plus:
-
-- **Environment Variable Configuration**: Secure credential management
-- **Gunicorn WSGI Server**: Production-grade performance
-- **Procfile**: Heroku/Railway deployment support
-- **12-Factor App Compliance**: Separation of config from code
-- **Production Error Handling**: Custom 404/500 error pages
-- **Scalable Architecture**: Ready for cloud deployment
-
----
-
-## Prerequisites
-
-- Python 3.8 or higher
-- Environment variable management (local: `.env` file, production: platform settings)
-- Gunicorn (included in requirements.txt)
-
----
-
-## Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/macraves/flask-wtform.git
-cd flask-wtform/library_app_production
-
-# Create virtual environment
-python -m venv venv
-
-# Activate virtual environment
-# On Windows:
-venv\Scripts\activate
-# On macOS/Linux:
-source venv/bin/activate
-
-# Install dependencies
+```powershell
+cd library_app_production
+py -3.12 -m venv .venv
+.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
+Copy-Item .env.example .env
+python -c "import secrets; print(secrets.token_hex(32))"
 ```
 
----
+Paste the printed value after `SECRET_KEY=` in `.env`, then start the app:
 
-## Configuration
-
-### Environment Variables
-
-Create a `.env` file in the project root (local development only):
-
-```bash
-# Database Configuration
-SQLALCHEMY_DATABASE_URI=sqlite:///data/library.sqlite
-
-# Security
-SECRET_KEY=your-super-secret-key-change-in-production
-
-# Optional: MySQL/PostgreSQL
-# SQLALCHEMY_DATABASE_URI=mysql://user:password@localhost/library_db
-# SQLALCHEMY_DATABASE_URI=postgresql://user:password@localhost/library_db
-```
-
-### Loading Environment Variables (Local Development)
-
-Install `python-dotenv` and load in `main.py`:
-
-```python
-from dotenv import load_dotenv
-load_dotenv()
-```
-
----
-
-## Usage
-
-### Local Development
-
-```bash
-# Using Flask development server
+```powershell
 python main.py
 ```
 
-### Production (Gunicorn)
+Open <http://127.0.0.1:5000/>. `main.py` starts Flask's built-in server on port 5000 with `debug=False`. On first start the app creates `data/library.sqlite` next to the code.
 
-```bash
-# Basic Gunicorn
-gunicorn main:app
+On macOS or Linux (not tested): `python3 -m venv .venv`, `source .venv/bin/activate`, `cp .env.example .env`.
 
-# With workers and binding
-gunicorn -w 4 -b 0.0.0.0:8000 main:app
+The first account registered at `/users/add` gets user id 1 and is the admin (see [Known limitations](#known-limitations)).
 
-# Recommended production settings
-gunicorn -w 4 --threads 2 -b 0.0.0.0:8000 --log-level info main:app
+## Configuration
+
+Set these in `.env` (copy of `.env.example`) or in the process environment.
+
+| Variable | Required | Purpose |
+| --- | --- | --- |
+| `SECRET_KEY` | Yes | Flask session and CSRF signing key. The app refuses to start without it. |
+| `SQLALCHEMY_DATABASE_URI` | No | Database URL. Defaults to the SQLite file `data/library.sqlite`. A `postgres://` prefix is rewritten to `postgresql://` in `main.py`. |
+| `RAPIDAPI_KEY` | No | Enables cover lookup by ISBN. Without it, new books get no cover. |
+
+Generate a key with:
+
+```powershell
+python -c "import secrets; print(secrets.token_hex(32))"
 ```
 
-**Gunicorn Options:**
-- `-w 4`: 4 worker processes
-- `--threads 2`: 2 threads per worker
-- `-b 0.0.0.0:8000`: Bind to all interfaces on port 8000
-- `--log-level info`: Logging level
+`.env` is for local use only and must not be committed.
 
----
+## Routes
+
+Blueprint prefixes are set in `main.py`. "Logged in" means `@login_required`; "owner or admin" means `can_modify`.
+
+| Method | Path | Who |
+| --- | --- | --- |
+| GET | `/` | Anyone (overview of all content) |
+| GET | `/date` | Anyone (returns the current date as JSON; POST is also accepted but needs a CSRF token) |
+| GET | `/authors/`, `/authors/get_author/<id>/` | Anyone |
+| GET, POST | `/authors/add` | Logged in |
+| GET, POST | `/authors/update/<id>/` | Admin |
+| POST | `/authors/delete/<id>/` | Admin |
+| GET | `/books/`, `/books/get_book/<id>/` | Anyone |
+| POST | `/books/search` | Anyone |
+| GET, POST | `/books/add` | Logged in |
+| GET, POST | `/books/book/update/<id>/` | Owner or admin |
+| POST | `/books/book/delete/<id>/` | Owner or admin |
+| GET | `/posts/`, `/posts/get_post/<id>/` | Anyone |
+| POST | `/posts/search` | Anyone |
+| GET, POST | `/posts/add` | Logged in |
+| GET, POST | `/posts/post/update/<id>/` | Owner or admin |
+| POST | `/posts/post/delete/<id>/` | Owner or admin |
+| GET | `/users/`, `/users/get_user/<id>/` | Anyone (these pages show user emails, see Known limitations) |
+| GET, POST | `/users/add` | Anyone (registration) |
+| GET, POST | `/users/login` | Anyone |
+| POST | `/users/logout` | Logged in |
+| GET, POST | `/users/dashboard` | Logged in (own account) |
+| GET, POST | `/users/user/update/<id>/` | Owner or admin |
+| POST | `/users/user/delete/<id>/` | Owner or admin |
+| GET | `/users/admin` | Admin |
+
+## Project structure
+
+```text
+library_app_production/
+├── main.py              # app setup, CSRF, sanitiser filter, blueprints, error handlers
+├── permissions.py       # is_admin(), can_modify()
+├── data_models.py       # User, Author, Book, Post (SQLAlchemy models)
+├── allwebforms.py       # Flask-WTF forms
+├── author/ book/ post/ user/   # one blueprint each: routes + templates
+│   └── book/book_api.py        # RapidAPI cover lookup
+├── templates/           # base, navbar, index, shared macros
+├── static/css/
+├── requirements.txt
+├── Procfile
+└── .env.example
+```
+
+Architecture notes:
+
+- Each feature is a Flask blueprint (`author_bp`, `book_bp`, `post_bp`, `user_bp`) registered with a URL prefix in `main.py`.
+- Authorization logic lives in one module, `permissions.py`, and the routes call it.
+- Models are in `data_models.py`; forms are in `allwebforms.py`.
+- `main.py` loads `.env` before importing the app modules, because `book_api.py` reads `RAPIDAPI_KEY` at import time.
 
 ## Deployment
 
-### Heroku Deployment
-
-1. **Create Heroku App**
-   ```bash
-   heroku create your-app-name
-   ```
-
-2. **Set Environment Variables**
-   ```bash
-   heroku config:set SECRET_KEY="your-secret-key"
-   heroku config:set SQLALCHEMY_DATABASE_URI="your-database-uri"
-   ```
-
-3. **Deploy**
-   ```bash
-   git push heroku main
-   ```
-
-4. **Initialize Database**
-   ```bash
-   heroku run python
-   >>> from main import app, db
-   >>> with app.app_context():
-   >>>     db.create_all()
-   ```
-
-### Railway Deployment
-
-1. Connect GitHub repository
-2. Set environment variables in Railway dashboard
-3. Railway auto-detects `Procfile` and deploys
-
-### Render Deployment
-
-1. Create new Web Service
-2. Connect repository
-3. Set build command: `pip install -r requirements.txt`
-4. Set start command: `gunicorn main:app`
-5. Configure environment variables
-
----
-
-## Procfile
-
-The `Procfile` tells platforms like Heroku how to run the app:
-
-```
-web: gunicorn main:app
-```
-
-**Explanation:**
-- `web`: Dyno type (web process)
-- `gunicorn`: WSGI HTTP server
-- `main:app`: Module and Flask app instance
-
----
-
-## Database Configuration
-
-### SQLite (Development)
-
-```bash
-SQLALCHEMY_DATABASE_URI=sqlite:///data/library.sqlite
-```
-
-### PostgreSQL (Production Recommended)
-
-```bash
-# Heroku provides DATABASE_URL automatically
-SQLALCHEMY_DATABASE_URI=${DATABASE_URL}
-
-# Or manually set
-SQLALCHEMY_DATABASE_URI=postgresql://user:password@host:5432/dbname
-```
-
-### MySQL
-
-```bash
-SQLALCHEMY_DATABASE_URI=mysql://user:password@host:3306/dbname
-```
-
----
-
-## Security Best Practices
-
-### Secret Key Generation
-
-```python
-import secrets
-print(secrets.token_hex(32))
-# Output: 64-character random hex string
-```
-
-### Environment Variable Security
-
-- **Never commit `.env` files to version control**
-- Add `.env` to `.gitignore`
-- Use platform-specific secret management in production
-- Rotate keys regularly
-
-### Database Security
-
-- Use strong database passwords
-- Restrict database access by IP (production)
-- Enable SSL for database connections
-- Regular backups
-
----
-
-## Database Migrations in Production
-
-```bash
-# Initialize migrations (first time only)
-flask db init
-
-# Create migration
-flask db migrate -m "Initial migration"
-
-# Apply migration
-flask db upgrade
-
-# On Heroku
-heroku run flask db upgrade
-```
-
----
-
-## Monitoring and Logging
-
-### Gunicorn Logging
-
-```bash
-# Log to file
-gunicorn main:app --log-file app.log --log-level info
-
-# Access and error logs
-gunicorn main:app --access-logfile access.log --error-logfile error.log
-```
-
-### Application Logging
-
-Add to `main.py`:
-
-```python
-import logging
-
-if not app.debug:
-    file_handler = logging.FileHandler('app.log')
-    file_handler.setLevel(logging.INFO)
-    app.logger.addHandler(file_handler)
-```
-
----
-
-## Performance Optimization
-
-### Recommended Gunicorn Workers
-
-```python
-# Formula: (2 x $num_cores) + 1
-# For 2 cores: (2 x 2) + 1 = 5 workers
-gunicorn -w 5 main:app
-```
-
-### Database Connection Pooling
-
-Add to configuration:
-
-```python
-app.config['SQLALCHEMY_POOL_SIZE'] = 10
-app.config['SQLALCHEMY_MAX_OVERFLOW'] = 20
-```
-
-### Static File Serving
-
-Use a CDN or nginx for static files in production.
-
----
-
-## Troubleshooting
-
-### Environment Variables Not Loading
-
-```bash
-# Check variables are set
-echo $SECRET_KEY
-
-# Heroku
-heroku config
-
-# Railway
-railway variables
-```
-
-### Database Connection Errors
-
-```bash
-# Test database connection
-python -c "from main import db; print('Connected')"
-```
-
-### Gunicorn Worker Timeout
-
-```bash
-# Increase timeout for slow operations
-gunicorn main:app --timeout 120
-```
-
----
-
-## Project Structure
-
-```
-library_app_production/
-├── main.py                  # Production entry point
-├── Procfile                 # Platform deployment config
-├── data_models.py           # SQLAlchemy models
-├── allwebforms.py           # WTForms definitions
-├── author/                  # Author blueprint
-├── book/                    # Book blueprint
-├── post/                    # Post blueprint
-├── user/                    # User blueprint
-├── templates/               # HTML templates
-├── static/                  # CSS, JS, images
-├── requirements.txt         # Python dependencies
-└── readme.md                # This file
-```
-
----
-
-## Environment Variables Reference
-
-| Variable | Description | Example |
-|----------|-------------|---------|
-| `SQLALCHEMY_DATABASE_URI` | Database connection string | `sqlite:///data/library.sqlite` |
-| `SECRET_KEY` | Flask secret key | `64-char-random-hex-string` |
-| `FLASK_ENV` | Flask environment | `production` |
-| `FLASK_DEBUG` | Debug mode | `False` |
-
----
-
-## Migration from Development Version
-
-1. Copy codebase from `db_app_api/library_app`
-2. Change `app.py` to `main.py`
-3. Replace hardcoded config with `os.environ.get()`
-4. Add `Procfile`
-5. Update `requirements.txt` with `gunicorn`
-6. Test with `gunicorn main:app`
-7. Deploy to platform
-
----
+The `Procfile` contains `web: gunicorn main:app`. No deployment has been done or verified. Gunicorn was installed but not run (I tested on Windows). Running `python main.py` is the only start method I tested.
+
+A deploy would need at least:
+
+- `SECRET_KEY` set in the host's environment, and `SQLALCHEMY_DATABASE_URI` for a hosted database.
+- A database driver for that database. `requirements.txt` has no PostgreSQL or MySQL driver (for example `psycopg2`), so the app would fail to connect to Postgres until one is added.
+- A fix for the `password_hash` column length before using a stricter database than SQLite (see [Known limitations](#known-limitations)).
+- A decision on migrations, because the schema is created with `db.create_all()`.
+
+## Testing
+
+This app has no automated test suite. I searched the app directory for test files and found none.
+
+## Known limitations
+
+These were checked in the code. Where a limitation says "confirmed", I reproduced it by running the app; the others are read from the code.
+
+- **Python 3.14 fails.** With the pinned `SQLAlchemy==2.0.25`, `import main` raised an `AssertionError` in SQLAlchemy on Python 3.14.2. The same requirements installed and ran on Python 3.12.6.
+- **Book update page crashes for books with a publication year.** `BookForm.publication_year` is a `DateField` (`allwebforms.py:51`) but the model column is an `Integer` (`data_models.py:78`). On SQLite a date entered in the add form is stored as text such as `1965-01-01`, and `/books/book/update/<id>/` then fails with `'str' object has no attribute 'strftime'`. The update POST stores a bare year, which becomes an integer, and the page then fails with `'int' object has no attribute 'strftime'`. Books with no year load fine.
+- **Book add requires a full date** (`YYYY-MM-DD`) in the "Publication Year" field because of the same `DateField`.
+- **Admin is hard-coded** as user id 1 (`permissions.py:5`). Registration is open, so whoever registers first is the admin.
+- **Empty search crashes.** Submitting an empty search to `/books/search` or `/posts/search` raises `UnboundLocalError` (`book/broutes.py:61`, `post/proutes.py:41`) and returns the 500 page. Confirmed on both `/books/search` and `/posts/search`.
+- **Password column too short.** `password_hash` is `String(128)` (`data_models.py:34`) but the scrypt hash produced is 162 characters. SQLite does not enforce the length; databases that do (such as PostgreSQL) would reject it. Not tested on another database.
+- **No migrations.** Flask-Migrate is initialised in `main.py`, but there is no `migrations/` folder, and `db.create_all()` runs at every start.
+- **Misnamed variable.** `MYSQL_URI` in `data_models.py` holds a SQLite path.
+- **Missing form fields crash the add routes.** Registration without an `about_user` field and book add without a `condition` field raise `AttributeError` (`NoneType` has no `strip` or `lower`). A browser always sends these fields, so this only affects hand-built requests.
+- **Author add requires both dates.** `AuthorForm` has no `Optional()` on `birth_date` or `death_date` (`allwebforms.py:40-41`), so an empty date is rejected and the author is not created (confirmed). A living author can only be created through the book form, which creates missing authors.
+- **Duplicate username or email returns 500.** Registering a username that already exists raises an unhandled `IntegrityError` (confirmed; `user/uroutes.py`). The dashboard and user update routes have the same gap.
+- **User emails are public.** `/`, `/users/` and `/users/get_user/<id>/` show every user's email to anonymous visitors (confirmed on `/` and `/users/`).
+- **Update routes skip validation.** The book, post and user update routes read `request.form` directly after the form check, so, for example, a book rating of 9 raises an uncaught `ValueError` and returns 500 (confirmed for books).
+- **Cover lookup failures break book add.** With `RAPIDAPI_KEY` set and an ISBN entered, `get_book_cover_url` raises on any non-200 reply (`book/book_api.py`), and `book_add` catches only `BookError` and `ValueError`, so an API failure should return 500. Read from the code; not run, because no key was available.
+- **No password change or reset.** The dashboard and update forms do not touch the password (read from the code).
+- **Dead code.** The `/books/get_book_recommendation` route is commented out, `AIForm` and `book/templates/recommendation.html` are unused, and `book_api.py` contains an unused `send_request_to_openai` function that calls a different RapidAPI service.
+- **Deprecated APIs.** The code uses `datetime.utcnow` and `Query.get`.
 
 ## License
 
-MIT License - see root [LICENSE](../LICENSE) file.
-
----
-
-## Author
-
-[@macraves](https://github.com/macraves)
+MIT. See [LICENSE](../LICENSE).

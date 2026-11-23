@@ -1,439 +1,128 @@
-# Movie Web App with Multi-Storage Support
+# Movie Web App with Multi-Storage
 
-Advanced Flask application demonstrating storage abstraction pattern with user authentication and OMDb API integration.
+Learning project: a Flask movie-list app where each user chooses, at signup, whether their data lives in SQLite, a JSON file or CSV files. Movie details come from the OMDb API. This is a learning project, not a production application.
 
-![Python](https://img.shields.io/badge/Python-3.8%2B-blue.svg)
-![Flask](https://img.shields.io/badge/Flask-3.0-green.svg)
-![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0-red.svg)
+## Variants
 
----
+| Folder | What it is | Status |
+| --- | --- | --- |
+| `moviewebapp_latest/` | Flask-Login frontend, reviews (SQLite only), separate JSON REST API | The one to run |
+| `using session/` | Earlier version using only the Flask session | Partly broken, see Known limitations |
 
-## Overview
+All commands below are PowerShell and are run from `moviewebapp_latest/` unless stated otherwise.
 
-Full-stack Flask movie management application showcasing advanced software architecture with **abstract base class pattern** for storage backends. Users can seamlessly switch between SQLite, JSON, or CSV storage without code changes. Features user authentication, OMDb API integration for movie data, and comprehensive CRUD operations.
+## Setup
 
----
+Python 3 is required. I did not pin a Python version; the app was exercised here on a current Python 3 with the package versions pip resolved on the day (Flask 3.1, Flask-SQLAlchemy 3.1, SQLAlchemy 2.1, pandas 3.1).
 
-## Key Features
+`requirements.txt` is incomplete. It lists only `flask`, `requests` and `python-dotenv==1.0.1`. From a fresh virtual environment with only that file installed, importing the app fails first on `flask_migrate`; `flask_login`, `flask_wtf`, `wtforms`, `flask_sqlalchemy` and `pandas` are missing as well (`werkzeug` arrives with Flask). The frontend and the API both start once these are installed:
 
-- **Storage Abstraction**: Switch between SQLite, JSON, CSV without modifying application code
-- **User Authentication**: Flask-Login with password hashing
-- **Movie Database Integration**: OMDb API for fetching movie information
-- **Multi-User Support**: Each user has isolated movie collections
-- **User Registration**: Registry system with unique username validation
-- **Rich Forms**: WTForms with validation and CSRF protection
-- **Bootstrap UI**: Responsive, modern interface
-- **Session Management**: Secure user sessions
-- **Version Control**: Data versioning in JSON/CSV formats
-
----
-
-## Architecture Highlights
-
-### Abstract Base Class Pattern
-
-```python
-class DataManagementInterface(ABC):
-    @abstractmethod
-    def get_all_users(self): pass
-
-    @abstractmethod
-    def get_user_movies(self, user_id): pass
-
-    @abstractmethod
-    def add_user(self, user_data): pass
-
-    @abstractmethod
-    def add_movie(self, user_id, movie_data): pass
+```powershell
+python -m venv .venv
+.\.venv\Scripts\Activate.ps1
+pip install -r ..\requirements.txt
+pip install flask-login flask-wtf flask-sqlalchemy flask-migrate pandas
 ```
 
-**Concrete Implementations:**
-- `SqliteDataManager` - SQLAlchemy ORM with relational database
-- `JsonDataManager` - JSON file storage with dict-based indexing
-- `CsvDataManager` - CSV file storage with pandas integration
+Copy `../.env.example` to `.env` in the project folder (`movie_web_app_multi_storage/`) and fill it in. The code loads `.env` with python-dotenv.
 
----
+| Variable | Needed for |
+| --- | --- |
+| `OMDB_API_KEY` | Required to add movies. Without it, adding a movie fails with the error `OMDB_API_KEY environment variable is not set`. Free key: <https://www.omdbapi.com/apikey.aspx> |
+| `SECRET_KEY` | Optional. If unset, the app warns and uses a random key, so sessions reset on every restart. |
 
-## Tech Stack
+## Run the frontend
 
-| Technology | Purpose |
-|------------|---------|
-| Flask | Web framework |
-| SQLAlchemy | ORM for SQLite backend |
-| Flask-Login | User authentication |
-| Flask-WTF | Form validation |
-| Bootstrap | Frontend UI framework |
-| OMDb API | External movie database |
-| Requests | HTTP client for API calls |
-| pandas | CSV data manipulation (optional) |
-
----
-
-## Project Versions
-
-### Latest Version (`moviewebapp_latest/`)
-- Complete implementation with all three storage backends
-- OMDb API integration
-- User reviews and ratings
-- Advanced error handling
-
-### Session Version (`using session/`)
-- Session-based state management
-- Simplified authentication flow
-- Experimental features
-
----
-
-## Prerequisites
-
-- Python 3.8 or higher
-- OMDb API key (free at [omdbapi.com](http://www.omdbapi.com/))
-- pip (Python package manager)
-
----
-
-## Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/macraves/flask-wtform.git
-cd flask-wtform/movie_web_app_multi_storage
-
-# Create virtual environment
-python -m venv venv
-
-# Activate virtual environment
-# On Windows:
-venv\Scripts\activate
-# On macOS/Linux:
-source venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
-```
-
----
-
-## Configuration
-
-### OMDb API Key
-
-1. Get free API key from [omdbapi.com](http://www.omdbapi.com/apikey.aspx)
-2. Set in your environment or configuration file
-
-### Storage Type Selection
-
-Users choose storage type during registration:
-- **SQLite**: Relational database (recommended for production)
-- **JSON**: File-based key-value storage
-- **CSV**: Spreadsheet-style storage
-
----
-
-## Usage
-
-### Running the Application
-
-```bash
-cd moviewebapp_latest
+```powershell
 python main.py
 ```
 
-**Frontend**: `http://localhost:5000`
+Open <http://127.0.0.1:5000>. Set `FLASK_DEBUG=1` to enable debug mode (`$env:FLASK_DEBUG = "1"`). Data is created on first run under `data/` (and `registry/` for JSON users); both are created inside `moviewebapp_latest/`.
 
-**Backend API**: `http://localhost:5001`
+Sign up with a name, username, a non-empty email (the label says "Optinal", but the field is required), password, a confirm-password field and a storage type typed into a text box (`csv`, `json` or `sqlite`). Sign in also asks for the storage type, because the app has no global user table: it looks the user up in the storage you name.
 
-### First-Time Setup
+## Run the REST API
 
-1. Navigate to `http://localhost:5000`
-2. Click "Sign Up"
-3. Enter username, password, and select storage type
-4. Login with credentials
-5. Start adding movies to your collection
+`backend/backend_api.py` is a separate Flask app from the frontend. Run directly it uses Flask's default port 5000, the same as the frontend, so the two cannot run side by side on defaults. I ran it on another port with the Flask CLI and logged in successfully:
 
----
-
-## Project Structure
-
-```
-movie_web_app_multi_storage/
-├── moviewebapp_latest/              # Main application
-│   ├── main.py                      # Application entry point
-│   ├── frontend/
-│   │   ├── frontend_app.py          # Frontend Flask app
-│   │   ├── movie_wtf.py             # WTForms definitions
-│   │   ├── forms_and_session_methods.py
-│   │   ├── templates/               # HTML templates
-│   │   └── static/                  # CSS, JS, images
-│   ├── backend/
-│   │   ├── backend_api.py           # REST API endpoints
-│   │   ├── request_movie.py         # OMDb API integration
-│   │   └── user_app_methods.py      # User operations
-│   ├── datamanagement/
-│   │   ├── storage_inheritance.py   # Abstract base class
-│   │   ├── sqlite_data_manager.py   # SQLite implementation
-│   │   ├── json_data_manager.py     # JSON implementation
-│   │   ├── csv_data_manager.py      # CSV implementation
-│   │   └── sqlite_models.py         # SQLAlchemy models
-│   ├── user/
-│   │   └── user_instance.py         # User class
-│   ├── data/                        # Storage files (auto-created)
-│   └── test_backend.py              # API tests
-├── using session/                   # Alternative session-based version
-├── requirements.txt                 # Python dependencies
-└── README.md                        # This file
+```powershell
+python -m flask --app backend.backend_api run --port 5001
 ```
 
----
+The API only works with SQLite users, and shares `data/movies.db` with the frontend. Authentication is a session cookie set by `POST /api/login`, so clients must keep cookies (for example `requests.Session`).
 
-## Features in Detail
+| Method and path | Auth | Behaviour |
+| --- | --- | --- |
+| `POST /api/login` | none | JSON `username`, `password`, `storage`. Only `"sqlite"` is accepted; other values return an error message (with HTTP 200). Wrong credentials return 401. |
+| `POST /api/user/add` | none | Creates an SQLite user from JSON (`name`, `username`, `email`, `password`). |
+| `GET /api/users` | login | Lists all users (`id`, `name`, `username`, `email`). |
+| `PUT /api/user-update/<id>` | login, own id only | Others get 403. Body must be a JSON object with only `name`, `username`, `email`, `password`; unknown fields return 400. Without `password` it returns a warning and changes nothing. An empty body `{}` returns 500. |
+| `DELETE /api/user-delete/<id>` | login, own id only | Others get 403. Takes the user's `password` in the JSON body; a wrong password returns 500 (unhandled `SqliteErrors`). |
+| `GET /api/users/<id>/movies` | login | Returns that user's movies (`id`, `Title`, `Year`, `Rate`). Any logged-in user can read any user's list; there is no ownership check here. |
+| `POST /api/movies/add` | login | JSON `title`; looks it up on OMDb and adds it to the logged-in user's list. |
 
-### User Management
+Unauthenticated calls to login-protected routes are redirected (302) to the login route rather than answered with 401.
 
-- **Registration**: Unique username validation, password hashing
-- **Login**: Flask-Login session management
-- **Dashboard**: Personalized user view
-- **Storage Isolation**: Each user's movies stored independently
+## Frontend routes (`moviewebapp_latest`)
 
-### Movie Operations
+| Route | Notes |
+| --- | --- |
+| `/`, `/signup`, `/signin`, `/signout` | Home and account flow |
+| `/movies`, `/movies/add` | Own list; add by title via OMDb |
+| `/dashboard`, `/users` | Own movies; all registered users in the current storage |
+| `/users/<id>/movies`, `/user/<id>/movie/<id>/info` | View a user's list or one movie. The list route has no ownership check but its template shows "Not authorized access" to non-owners; the movie info page has no check and shows another user's movie |
+| `/users/<id>/update_movie/<id>`, `/users/<id>/delete_movie/<id>` | Edit or delete a movie (owner only) |
+| `/user-update/<id>`, `/user-delete/<id>` | Edit or delete the account (owner only, password re-entered) |
+| `/add_review/movie/<id>`, `/all-reviews` | Reviews, SQLite storage only |
 
-#### Add Movie
-1. Search by title via OMDb API
-2. Auto-populate: poster, year, director, genre
-3. Manual entry option available
-4. Add to personal collection
+## Storage
 
-#### View Movies
-- List all movies in collection
-- Detailed view with poster and metadata
-- Filter and search capabilities
+All three backends implement `DataManagmentInterface` (spelled this way in the code, in `datamanagement/storage_inheritance.py`), which declares only `get_all_users` and `get_user_movies` as abstract. The concrete classes are `SqliteStorage`, `JsonStorage` and `CsvStorage`, each with its own error class (`SqliteErrors`, `JsonStorageErrors`, `CsvStorageErrors`).
 
-#### Update Movie
-- Edit movie details
-- Update ratings and reviews
-- Change movie information
+| Backend | File | Layout |
+| --- | --- | --- |
+| SQLite | `data/movies.db` | Tables `users` (`id`, `name`, `username`, `email`, `date_added`, `password_hash`), `movies` (`id`, `Title`, `Year`, `imdbRating`, `Poster`, `user_id`), `reviews` (`id`, `user_id`, `movie_id`, `review_text`) |
+| JSON | `data/movies.json` | `{"version": 1.0, "users": {"<id>": {id, name, username, email, password, movies: [...]}}}`; `password` holds a hash |
+| CSV | `data/users.csv`, `data/movies.csv` | users: `id,name,username,email,password,movies`; movies: `id,Title,Year,imdbRating,Poster,user_id` |
 
-#### Delete Movie
-- Remove from collection
-- Confirmation prompt
+Movie records keep the OMDb key names `Title`, `Year`, `imdbRating` and `Poster`.
 
-### OMDb API Integration
+## Security
 
-```python
-def fetch_movie_data(title, api_key):
-    url = f"http://www.omdbapi.com/?t={title}&apikey={api_key}"
-    response = requests.get(url)
-    return response.json()
-```
+Present:
 
----
+- Passwords are hashed (Werkzeug) in all three data stores.
+- Most pages use `@login_required` (unauthenticated requests are redirected to sign in). Exceptions: home, signup, signin, `/all-reviews` and `/add_review/...`.
+- Account edit and delete, and movie edit and delete, check that the URL's user id is the logged-in user (403 otherwise). The API checks the same for update and delete.
+- The HTML forms are Flask-WTF forms with CSRF tokens; a sign-in POST without a token is not accepted.
+- `SECRET_KEY` and `OMDB_API_KEY` come from the environment; `.env` is not committed.
 
-## Storage Backend Details
+Absent or weak:
 
-### SQLite (Recommended)
+- The JSON API has no CSRF protection and relies on a session cookie.
+- Deleting a movie is a plain GET link, so it is not CSRF-protected.
+- `/user/<id>/movie/<id>/info`, `/users` (names), `/api/users` and `/api/users/<id>/movies` let any logged-in user read other users' data (the `/users/<id>/movies` page hides the list in its template, but the route itself has no check); `/all-reviews` needs no login.
+- JSON-storage users also get their password written in plain text to `registry/registry.json` by `user/user_instance.py` (observed when I signed up a JSON user).
+- No rate limiting, no HTTPS; the dev server is used.
 
-**Advantages:**
-- Relational integrity
-- ACID compliance
-- Query optimization
-- Best for production
+## Tests
 
-**Schema:**
-```sql
-CREATE TABLE users (
-    id INTEGER PRIMARY KEY,
-    username TEXT UNIQUE,
-    password_hash TEXT,
-    storage_type TEXT
-);
+There are no automated tests. `test_backend.py` is an interactive menu script for manual API checks. It needs the API running on port 5000 (it hardcodes `http://127.0.0.1:5000`) and an SQLite user `admin` with password `123`, which nothing in the code creates. It starts its menu at import time (`main()` is called at module level). Its add-movie check posts keys `Title`/`Year`/... while the API reads `title`.
 
-CREATE TABLE movies (
-    id INTEGER PRIMARY KEY,
-    user_id INTEGER,
-    title TEXT,
-    year INTEGER,
-    poster_url TEXT,
-    FOREIGN KEY (user_id) REFERENCES users(id)
-);
-```
+## Known limitations
 
-### JSON
-
-**Advantages:**
-- Human-readable
-- Version control friendly
-- Easy debugging
-
-**Structure:**
-```json
-{
-  "version": 1.0,
-  "users": {
-    "1": {
-      "name": "john_doe",
-      "movies": [
-        {"id": 1, "title": "Inception", "year": 2010}
-      ]
-    }
-  }
-}
-```
-
-### CSV
-
-**Advantages:**
-- Excel compatible
-- Simple data export
-- Lightweight
-
-**Format:**
-```csv
-user_id,movie_id,title,year,poster_url
-1,1,Inception,2010,http://...
-1,2,The Matrix,1999,http://...
-```
-
----
-
-## API Endpoints (Backend)
-
-| Method | Endpoint | Description |
-|--------|----------|-------------|
-| GET | `/api/users` | List all users |
-| GET | `/api/users/<id>/movies` | Get user's movies |
-| POST | `/api/users` | Add new user |
-| POST | `/api/users/<id>/movies` | Add movie to user |
-| PUT | `/api/movies/<id>` | Update movie |
-| DELETE | `/api/movies/<id>` | Delete movie |
-
----
-
-## Advanced Features
-
-### Dynamic Storage Selection
-
-Users select storage type at registration. Application instantiates appropriate backend:
-
-```python
-if storage_type == "sqlite":
-    data_manager = SqliteDataManager()
-elif storage_type == "json":
-    data_manager = JsonDataManager()
-elif storage_type == "csv":
-    data_manager = CsvDataManager()
-```
-
-### User Registry System
-
-Centralized user registry in `registry/registry.json`:
-- Prevents duplicate usernames
-- Stores password hashes
-- Maps users to storage types
-
-### Version Control
-
-JSON and CSV files include version numbers for future schema migrations:
-
-```python
-{
-    "version": 1.0,
-    "users": {...}
-}
-```
-
----
-
-## Security Features
-
-- Password hashing with Werkzeug
-- CSRF protection via Flask-WTF
-- Session security with Flask-Login
-- SQL injection prevention (SQLAlchemy ORM)
-- Input validation on all forms
-
----
-
-## Testing
-
-```bash
-cd moviewebapp_latest
-python test_backend.py
-```
-
-**Test Coverage:**
-- User registration and login
-- Movie CRUD operations
-- Storage backend switching
-- API endpoint validation
-
----
-
-## Configuration Options
-
-### Frontend App (`frontend_app.py`)
-
-```python
-app.config["SECRET_KEY"] = "your-secret-key"
-app.config["OMDB_API_KEY"] = "your-omdb-key"
-```
-
-### Backend API (`backend_api.py`)
-
-```python
-API_PORT = 5001
-CORS_ORIGINS = "*"  # Configure for production
-```
-
----
-
-## Troubleshooting
-
-### OMDb API Errors
-
-Check API key and quota:
-```bash
-curl "http://www.omdbapi.com/?t=Inception&apikey=YOUR_KEY"
-```
-
-### Storage File Corruption
-
-Delete `data/` directory and restart application (creates fresh files).
-
-### Login Issues
-
-Clear browser cookies or check `registry/registry.json` for user entry.
-
----
-
-## Future Enhancements
-
-- MongoDB storage backend
-- Redis caching layer
-- Movie recommendations engine
-- Social features (share lists)
-- Export/import movie lists
-- Advanced search and filters
-- Movie ratings aggregation
-- Watchlist functionality
-
----
-
-## Design Patterns Used
-
-- **Abstract Factory**: Storage backend creation
-- **Strategy Pattern**: Interchangeable storage algorithms
-- **Singleton**: Database connection management
-- **MVC Architecture**: Model-View-Controller separation
-- **Blueprint Pattern**: Flask route modularization
-
----
+- `requirements.txt` is missing `flask-login`, `flask-wtf`, `flask-sqlalchemy`, `flask-migrate` and `pandas` (see Setup).
+- Reviews work only with SQLite storage, and the review pages currently fail: the review form page (`add_review.html`) and `SqliteStorage.add_review` both use `movie.adder`, but the `Movie` model has no such attribute (its backref is `user`), so both GET and POST of `/add_review/movie/<id>` return HTTP 500. `/add_review/...` with no session also returns 500 (`KeyError`) instead of redirecting. `/all-reviews` returns 500 for a signed-in JSON or CSV user.
+- The navbar search box is a form with no `action` and no backend route.
+- Deleting a movie is a GET link.
+- The API supports SQLite users only; the API and the frontend both default to port 5000.
+- The storage type is typed free-form at signup and sign-in. A typo at signup shows a validation message; at sign-in it raises a 500 error page.
+- In JSON and CSV storage, ids come from list lengths (movies in JSON, users in CSV), so deleting and then adding can create duplicate ids; in CSV storage a duplicate user id then makes `get_all_users` drop one of the two users.
+- `using session/` is an older variant:
+  - `backend/user_app.py` imports `datamanagement.JSON_Data_Manager`, but the file is `json_data_manager.py`; importing it fails with `ModuleNotFoundError`. It also calls `JsonStorage()` with no argument.
+  - Its frontend (`python main.py` from that folder) runs. SQLite and JSON signup and sign-in worked here (sign-in uses the `name` field); CSV signup returns HTTP 500 because `CsvStorage` has no `add_new_user`, and CSV sign-in returns 500 too.
+  - It stores passwords in plain text: the SQLite `users.password` column, the JSON storage file and `registry/registry.json`.
 
 ## License
 
-MIT License - see root [LICENSE](../LICENSE) file.
-
----
-
-## Author
-
-[@macraves](https://github.com/macraves)
+MIT, see [LICENSE](../LICENSE).
