@@ -16,7 +16,7 @@
 	<br />
 	<div>
 		<a href="{{url_for('book.books_all')}}" class="btn btn-secondary">Books</a>
-		{% if current_user.id == 1 or current_user.id== book.user_id%}
+		{% if current_user.is_admin or current_user.id== book.user_id%}
 		<a href="{{url_for('book.book_update',book_id=book_id)}}" class="btn btn-primary"
 			>Update</a
 		>

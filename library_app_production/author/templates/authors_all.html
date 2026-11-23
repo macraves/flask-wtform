@@ -10,7 +10,7 @@
 				<div><strong>Brith Date: {{ author.birth_date }}</strong></div>
 				<div><strong>Death Date: {{ author.death_date }}</div>
 				<div><strong>Date Added:</strong> {{ author.added_date }}</div>
-				{% if current_user.id == 1 %}
+				{% if current_user.is_admin %}
 				<div>
 					<a href="{{url_for('author.author_update',author_id=author.id)}}" class="btn btn-primary"
 						>Update</a

@@ -1,5 +1,7 @@
 # Library App (learning project)
 
+> **Frozen historical copy.** This folder is not receiving fixes. The bugs listed under Known limitations below were fixed in [`library_app_production`](../../library_app_production/readme.md), not here. Use that app.
+
 A small Flask app for managing authors, books, blog-style posts and users, backed by SQLite. It is the development predecessor of the main app in [`library_app_production`](../../library_app_production/readme.md). It has the same CSRF, authorization and HTML-sanitising measures, but not that app's mandatory `SECRET_KEY` check: this one warns and falls back to a random key. Read that README for the detailed security and deployment story. This one only describes what is in this folder.
 
 ## Quick start

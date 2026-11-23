@@ -18,7 +18,7 @@
 				<li class="nav-item">
 					<a class="nav-link disabled" aria-disabled="true">Disabled</a>
 				</li>
-				{% if current_user.is_authenticated %} {% if current_user.id == 1 %}
+				{% if current_user.is_authenticated %} {% if current_user.is_admin %}
 				<li class="nav-item">
 					<a class="nav-link active" aria-current="page" href="{{url_for('user.admin')}}"
 						>Admin</a

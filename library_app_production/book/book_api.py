@@ -1,7 +1,10 @@
 """Request book cover data from RapidAPI by book ISBN."""
+import logging
 import os
 
 import requests
+
+logger = logging.getLogger(__name__)
 
 
 class ResponseError(Exception):
@@ -14,6 +17,7 @@ class ResponseError(Exception):
             status_code (int): HTTP status code returned by the API.
             message (str): Error message returned by the API.
         """
+        super().__init__(f"{status_code}: {message}")
         self.status_code = status_code
         self.message = message
 
@@ -33,6 +37,7 @@ def get_book_cover_url(isbn):
 
     Raises:
         ResponseError: If the API returns a non-200 status.
+        requests.RequestException: On network errors and timeouts.
     """
     if not isbn or not BOOK_API_KEY:
         return None
@@ -47,42 +52,33 @@ def get_book_cover_url(isbn):
         BOOK_COVER_API, headers=headers, params=querystring, timeout=5
     )
     if response.status_code != 200:
-        raise ResponseError(
-            status_code=response.status_code, message=response.json()["message"]
-        )
-    book_cover_json = response.json()
-    return book_cover_json["url"]
+        try:
+            message = response.json().get("message", "")
+        except (ValueError, AttributeError):
+            message = response.text[:200]
+        raise ResponseError(status_code=response.status_code, message=message)
+    return response.json()["url"]
 
 
-def send_request_to_openai(prompt):
-    """Send text to the RapidAPI AI content detector.
+def find_cover_url(isbn):
+    """Look up a cover URL without ever raising.
+
+    A failed lookup must not stop a book from being saved.
 
     Args:
-        prompt (str): Text to analyse.
+        isbn (str): ISBN of the book.
 
     Returns:
-        dict: Parsed JSON response from the API.
+        str | None: Cover URL, or None when the lookup is not possible or fails.
     """
-    url = "https://ai-content-detector-ai-gpt.p.rapidapi.com/api/detectText/"
-    headers = {
-        "content-type": "application/json",
-        "X-RapidAPI-Key": BOOK_API_KEY,
-        "X-RapidAPI-Host": "ai-content-detector-ai-gpt.p.rapidapi.com",
-    }
-    payload = {"text": prompt}
-
-    response = requests.post(url, json=payload, headers=headers, timeout=10)
-    return response.json()
-
-
-def main():
-    """Run a manual check of the content detector request."""
-    user_prompt = """Suggest me 3 books about Python programming language.
-    Consider for beginners and advanced programmers."""
-    response_data = send_request_to_openai(user_prompt)
-    print("OpenAI'respond:")
-    print(response_data)
-
-
-if __name__ == "__main__":
-    main()
+    try:
+        return get_book_cover_url(isbn)
+    except (
+        requests.RequestException,
+        ResponseError,
+        KeyError,
+        TypeError,
+        ValueError,
+    ) as exc:
+        logger.warning("Cover lookup failed for ISBN %s: %s", isbn, exc)
+        return None

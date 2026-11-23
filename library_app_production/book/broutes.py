@@ -2,16 +2,15 @@
 from markupsafe import Markup
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
-from permissions import can_modify
+from permissions import can_modify, flash_form_errors
 from sqlalchemy import asc, desc, func
-from allwebforms import BookForm, SearchForm
+from allwebforms import BookForm, BookUpdateForm, SearchForm
 from data_models import db, Book, Author
-from book.book_api import get_book_cover_url
+from book.book_api import find_cover_url
 
 
 # Create blueprints connection
 book_bp = Blueprint("book", __name__, url_prefix="/books", template_folder="templates")
-# openai.api_key = ""
 
 
 class BookError(Exception):
@@ -41,22 +40,12 @@ def reset_book_form(form):
 def search():
     """Search book by title or author by name."""
     form = SearchForm(request.form)
-    if form.validate_on_submit():
-        searched = form.searched.data.lower().strip()
-        print(f"Search Text: {searched}")
-
-        books = Book.query.filter(func.lower(Book.title).like(f"%{searched}%")).all()
-        print("Books:")
-        for book in books:
-            print(book.title)
-
-        authors = Author.query.filter(
-            func.lower(Author.name).like(f"%{searched}%")
-        ).all()
-        print("Authors:")
-        for author in authors:
-            print(author.name)
-
+    if not form.validate_on_submit():
+        flash("Enter a search term")
+        return redirect(url_for("index"))
+    searched = form.searched.data.lower().strip()
+    books = Book.query.filter(func.lower(Book.title).like(f"%{searched}%")).all()
+    authors = Author.query.filter(func.lower(Author.name).like(f"%{searched}%")).all()
     return render_template(
         "search.html", searched=searched, books=books, authors=authors
     )
@@ -105,6 +94,7 @@ def book_add():
     form = BookForm()
     if form.validate_on_submit():
         author_name = form.author.data.title().strip()
+        isbn = (form.isbn.data or "").strip()
         # query to checj author if exists
         author = Author.query.filter_by(name=author_name).first()
         if not author:
@@ -114,13 +104,13 @@ def book_add():
         try:
             book = Book(
                 title=form.title.data.title().strip(),
-                condition=form.condition.data.lower().strip(),
+                condition=(form.condition.data or "").lower().strip(),
                 author=author,
                 user_id=current_user.id,
-                isbn=form.isbn.data.strip(),
+                isbn=isbn,
                 publication_year=form.publication_year.data,
                 rating=form.rating.data if form.rating.data else 0,
-                cover_url=get_book_cover_url(form.isbn.data.strip()),
+                cover_url=find_cover_url(isbn),
             )
 
             db.session.add(book)
@@ -131,15 +121,18 @@ def book_add():
             flash("Operation failed during the add process")
         except ValueError:
             flash("Rating must be float between 0 and 5.")
+    elif request.method == "POST":
+        flash_form_errors(form)
     return render_template("book_add.html", header="Add book", form=form)
 
 
 @book_bp.route("/book/update/<int:book_id>/", methods=["GET", "POST"])
 @login_required
 def book_update(book_id):
-    """Update book
-    If not all form BookForm are not needed, we can use this method
-    for instance user should not update book.isbn.
+    """Update a book.
+
+    Only title, publication year, rating and condition can change, so the ISBN
+    and author are not part of the update form.
     """
     book = Book.query.get_or_404(book_id)
     if book is None:
@@ -148,19 +141,20 @@ def book_update(book_id):
     if not can_modify(book.user_id):
         flash("You can only change your own books")
         return redirect(url_for("book.books_all"))
-    form = BookForm(obj=book)
-    if request.method == "POST":
-        book.title = request.form.get("title").title().strip()
-        book.publication_year = request.form.get("publication_year")
-        book.rating = request.form.get("rating")
-        book.condition = request.form.get("condition").lower().strip()
+    form = BookUpdateForm(obj=book)
+    if form.validate_on_submit():
+        book.title = form.title.data.title().strip()
+        book.publication_year = form.publication_year.data
+        book.rating = form.rating.data if form.rating.data is not None else 0
+        book.condition = (form.condition.data or "").lower().strip()
         try:
             db.session.commit()
             flash(Markup("<strong>book ID: {}</strong> has been updated").format(book.id))
-            reset_book_form(form)
         except BookError:
             flash("Operation failed during the update process")
         return redirect(url_for("book.books_all"))
+    if request.method == "POST":
+        flash_form_errors(form)
     return render_template(
         "book_update.html", header="Update book", form=form, book_id=book_id
     )
@@ -184,26 +178,3 @@ def book_delete(book_id):
     except BookError:
         flash("Operation failed during the delete process")
     return redirect("/books")
-
-
-# @book_bp.route("/get_book_recommendation/<int:book_id>/", methods=["GET", "POST"])
-# def get_book_recommendation(book_id):
-#     """Gets user input and returns a book recommendation"""
-#     recommendation = None
-#     book = Book.query.get_or_404(book_id)
-#     form = AIForm(obj=book)
-#     if form.validate_on_submit():
-#         title = form.title.data
-#         prompt = form.prompt.data
-#         full_prompt = f"Book title: {title}\nPrompt: {prompt}"
-#         response = openai.completions.create(
-#             engine="text-davinci-002", prompt=full_prompt, max_tokens=150
-#         )
-#         recommendation = response.choices[0].text.strip()
-
-#     return render_template(
-#         "recommendation.html",
-#         title=form.title.data,
-#         recommendation=recommendation,
-#         form=form,
-#     )

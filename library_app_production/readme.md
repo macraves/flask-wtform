@@ -7,16 +7,16 @@ Status: the main project of this repository. It is a learning project and is not
 ## What it does
 
 - **Authors**: any logged-in user can add an author; only the admin can edit or delete one. Deleting an author also deletes that author's books.
-- **Books**: logged-in users add books (title, author, ISBN, publication date, condition, rating from 0 to 5). If `RAPIDAPI_KEY` is set and an ISBN is entered, the cover URL is requested from the RapidAPI Book Cover API (`book/book_api.py`). Without the key, books are saved with no cover. The book list can be sorted by title or author.
+- **Books**: logged-in users add books (title, author, ISBN, publication year, condition, rating from 0 to 5). If `RAPIDAPI_KEY` is set and an ISBN is entered, the cover URL is requested from the RapidAPI Book Cover API (`book/book_api.py`). Without the key, or when the lookup fails or times out, the book is saved with no cover. The book list can be sorted by title or author.
 - **Posts**: logged-in users write posts with a CKEditor rich-text field. HTML is sanitised when rendered.
-- **Users**: registration, login, logout, a dashboard to edit your own profile, and an admin overview page.
+- **Users**: registration, login, logout, a dashboard to edit your own profile, and an admin overview page. Email addresses are shown only to the account owner and to admins. Deleting an account also deletes the books and posts that user owns; the last admin account cannot be deleted.
 - **Search**: the navbar search box posts to `/books/search`. A post content search also exists as a POST endpoint (`/posts/search`), but no page in the UI links to it.
 
 ## Security measures in the code
 
-- **Authorization**: `permissions.py` provides `can_modify(owner_id)` (record owner or admin). It guards book, post and user update and delete. Author update and delete, and the `/users/admin` page, are admin only.
+- **Authorization**: `permissions.py` provides `can_modify(owner_id)` (record owner or admin). Admin is the `is_admin` flag on the user, never granted by registration (see [Quick start](#quick-start)). It guards book, post and user update and delete. Author update and delete, and the `/users/admin` page, are admin only.
 - **CSRF**: `CSRFProtect(app)` in `main.py` requires a token on every POST. Forms use `form.hidden_tag()`; the delete and logout buttons in `templates/_macros.html` include `csrf_token()`. A failed check is handled by a `CSRFError` handler that flashes a message and redirects to `/`.
-- **XSS**: post content is passed through the `sanitize_html` Jinja filter (`nh3.clean`) wherever it is rendered. Flash messages that include user input are built with `Markup(...).format(...)`, which escapes the inserted value.
+- **XSS**: post content is passed through the `sanitize_html` Jinja filter (`nh3.clean`) wherever it is rendered. Flash messages that include user input are built with `Markup(...).format(...)`, which escapes the inserted value; all other flashes are plain strings that Jinja autoescapes.
 - **State-changing routes are POST only**: all delete routes and logout accept POST only (a GET returns 405).
 - **Secrets from the environment**: `SECRET_KEY`, the database URI and `RAPIDAPI_KEY` are read from environment variables (loaded from `.env` by `python-dotenv`). The app raises `RuntimeError` at startup if `SECRET_KEY` is empty or unset.
 - **Passwords**: stored as hashes using `werkzeug.security.generate_password_hash` with its defaults. With the pinned Werkzeug 3.1.6 this produced `scrypt:` hashes (checked), not PBKDF2. The plain password is never readable from the model.
@@ -24,7 +24,7 @@ Status: the main project of this repository. It is a learning project and is not
 
 ## Quick start
 
-Tested on Python 3.12.6 on Windows. Python 3.14 does not work with the pinned dependencies (see [Known limitations](#known-limitations)), so create the virtual environment with Python 3.12 explicitly: on a machine where plain `python` is 3.14, `python -m venv .venv` builds a broken environment. Python 3.11 and macOS/Linux were not tested.
+Tested on Python 3.12.6 and 3.14.2 on Windows (the test suite passes on both with the pinned requirements). CI runs Python 3.12. Python 3.11 and macOS/Linux were not tested.
 
 From the repository root, in PowerShell:
 
@@ -47,7 +47,20 @@ Open <http://127.0.0.1:5000/>. `main.py` starts Flask's built-in server on port 
 
 On macOS or Linux (not tested): `python3 -m venv .venv`, `source .venv/bin/activate`, `cp .env.example .env`.
 
-The first account registered at `/users/add` gets user id 1 and is the admin (see [Known limitations](#known-limitations)).
+Register an account at `/users/add`, then make it an admin from the command line (registration never grants admin):
+
+```powershell
+flask --app main make-admin <username>
+```
+
+**Upgrading an existing database.** `db.create_all()` creates missing tables but does not alter existing ones, and there are no migrations. A database created by an earlier version needs the new column added by hand, then promote the old admin (user id 1):
+
+```sql
+ALTER TABLE users ADD COLUMN is_admin BOOLEAN NOT NULL DEFAULT 0;
+UPDATE users SET is_admin = 1 WHERE id = 1;
+```
+
+The `ALTER` statement was run against a SQLite table; it was not run on PostgreSQL. SQLite ignores the widened `password_hash` length. On PostgreSQL also run `ALTER TABLE users ALTER COLUMN password_hash TYPE VARCHAR(256);` (not tested). Books saved by an earlier version may hold a date string such as `1965-01-01` in `publication_year`; those rows still display and can be fixed by updating the book.
 
 ## Configuration
 
@@ -89,7 +102,7 @@ Blueprint prefixes are set in `main.py`. "Logged in" means `@login_required`; "o
 | GET, POST | `/posts/add` | Logged in |
 | GET, POST | `/posts/post/update/<id>/` | Owner or admin |
 | POST | `/posts/post/delete/<id>/` | Owner or admin |
-| GET | `/users/`, `/users/get_user/<id>/` | Anyone (these pages show user emails, see Known limitations) |
+| GET | `/users/`, `/users/get_user/<id>/` | Anyone (emails are shown only to the owner and admins) |
 | GET, POST | `/users/add` | Anyone (registration) |
 | GET, POST | `/users/login` | Anyone |
 | POST | `/users/logout` | Logged in |
@@ -103,14 +116,17 @@ Blueprint prefixes are set in `main.py`. "Logged in" means `@login_required`; "o
 ```text
 library_app_production/
 ├── main.py              # app setup, CSRF, sanitiser filter, blueprints, error handlers
-├── permissions.py       # is_admin(), can_modify()
+├── permissions.py       # is_admin(), can_modify(), flash_form_errors()
 ├── data_models.py       # User, Author, Book, Post (SQLAlchemy models)
 ├── allwebforms.py       # Flask-WTF forms
 ├── author/ book/ post/ user/   # one blueprint each: routes + templates
 │   └── book/book_api.py        # RapidAPI cover lookup
 ├── templates/           # base, navbar, index, shared macros
 ├── static/css/
+├── tests/               # pytest suite
 ├── requirements.txt
+├── requirements-dev.txt # runtime requirements plus pytest
+├── pytest.ini
 ├── Procfile
 └── .env.example
 ```
@@ -121,6 +137,7 @@ Architecture notes:
 - Authorization logic lives in one module, `permissions.py`, and the routes call it.
 - Models are in `data_models.py`; forms are in `allwebforms.py`.
 - `main.py` loads `.env` before importing the app modules, because `book_api.py` reads `RAPIDAPI_KEY` at import time.
+- The `data/` folder is created only when `SQLALCHEMY_DATABASE_URI` is unset, not when a module is imported.
 
 ## Deployment
 
@@ -130,34 +147,35 @@ A deploy would need at least:
 
 - `SECRET_KEY` set in the host's environment, and `SQLALCHEMY_DATABASE_URI` for a hosted database.
 - A database driver for that database. `requirements.txt` has no PostgreSQL or MySQL driver (for example `psycopg2`), so the app would fail to connect to Postgres until one is added.
-- A fix for the `password_hash` column length before using a stricter database than SQLite (see [Known limitations](#known-limitations)).
-- A decision on migrations, because the schema is created with `db.create_all()`.
+- A plan for schema changes: the schema is created with `db.create_all()` and there are no migrations (see [Known limitations](#known-limitations)).
 
 ## Testing
 
-This app has no automated test suite. I searched the app directory for test files and found none.
+From `library_app_production`, in PowerShell:
+
+```powershell
+py -3.12 -m venv .venv
+.venv\Scripts\Activate.ps1
+pip install -r requirements-dev.txt
+python -m pytest
+```
+
+84 tests ran and passed on Python 3.12.6 and on 3.14.2. They use a temporary SQLite file and a test secret key, mock all network calls, and need no `.env`. They cover authorization (owner, other user, admin, anonymous), CSRF and method rules, HTML sanitising and escaping, rendering of every page, and one regression test per bug fixed. The tests were written alongside the fixes, so they were not run against the old code to show them failing first. GitHub Actions runs the same command on Python 3.12 (`.github/workflows/tests.yml` at the repository root).
 
 ## Known limitations
 
 These were checked in the code. Where a limitation says "confirmed", I reproduced it by running the app; the others are read from the code.
 
-- **Python 3.14 fails.** With the pinned `SQLAlchemy==2.0.25`, `import main` raised an `AssertionError` in SQLAlchemy on Python 3.14.2. The same requirements installed and ran on Python 3.12.6.
-- **Book update page crashes for books with a publication year.** `BookForm.publication_year` is a `DateField` (`allwebforms.py:51`) but the model column is an `Integer` (`data_models.py:78`). On SQLite a date entered in the add form is stored as text such as `1965-01-01`, and `/books/book/update/<id>/` then fails with `'str' object has no attribute 'strftime'`. The update POST stores a bare year, which becomes an integer, and the page then fails with `'int' object has no attribute 'strftime'`. Books with no year load fine.
-- **Book add requires a full date** (`YYYY-MM-DD`) in the "Publication Year" field because of the same `DateField`.
-- **Admin is hard-coded** as user id 1 (`permissions.py:5`). Registration is open, so whoever registers first is the admin.
-- **Empty search crashes.** Submitting an empty search to `/books/search` or `/posts/search` raises `UnboundLocalError` (`book/broutes.py:61`, `post/proutes.py:41`) and returns the 500 page. Confirmed on both `/books/search` and `/posts/search`.
-- **Password column too short.** `password_hash` is `String(128)` (`data_models.py:34`) but the scrypt hash produced is 162 characters. SQLite does not enforce the length; databases that do (such as PostgreSQL) would reject it. Not tested on another database.
-- **No migrations.** Flask-Migrate is initialised in `main.py`, but there is no `migrations/` folder, and `db.create_all()` runs at every start.
-- **Misnamed variable.** `MYSQL_URI` in `data_models.py` holds a SQLite path.
-- **Missing form fields crash the add routes.** Registration without an `about_user` field and book add without a `condition` field raise `AttributeError` (`NoneType` has no `strip` or `lower`). A browser always sends these fields, so this only affects hand-built requests.
-- **Author add requires both dates.** `AuthorForm` has no `Optional()` on `birth_date` or `death_date` (`allwebforms.py:40-41`), so an empty date is rejected and the author is not created (confirmed). A living author can only be created through the book form, which creates missing authors.
-- **Duplicate username or email returns 500.** Registering a username that already exists raises an unhandled `IntegrityError` (confirmed; `user/uroutes.py`). The dashboard and user update routes have the same gap.
-- **User emails are public.** `/`, `/users/` and `/users/get_user/<id>/` show every user's email to anonymous visitors (confirmed on `/` and `/users/`).
-- **Update routes skip validation.** The book, post and user update routes read `request.form` directly after the form check, so, for example, a book rating of 9 raises an uncaught `ValueError` and returns 500 (confirmed for books).
-- **Cover lookup failures break book add.** With `RAPIDAPI_KEY` set and an ISBN entered, `get_book_cover_url` raises on any non-200 reply (`book/book_api.py`), and `book_add` catches only `BookError` and `ValueError`, so an API failure should return 500. Read from the code; not run, because no key was available.
+- **Admin must be set from the command line.** There is no admin UI for promoting or demoting users, only `flask --app main make-admin <username>`.
+- **No migrations.** Flask-Migrate was removed because it was initialised but never used (there was no `migrations/` folder). `db.create_all()` runs at every start and does not alter existing tables, so schema changes to an existing database are manual (see the upgrade note in [Quick start](#quick-start)).
+- **No database driver for PostgreSQL or MySQL** in `requirements.txt`, although `main.py` rewrites `postgres://` to `postgresql://`. Only SQLite was run.
+- **Legacy date-string years.** Rows written by an earlier version may hold a date string in `publication_year`. They display and update fine, but the column is typed as an integer and SQLite does not enforce that.
+- **Posts are sanitised when rendered, not when stored.** Raw HTML is kept in the database.
+- **Search treats `%` and `_` as wildcards** because the term is passed to `LIKE` unescaped (read from the code).
 - **No password change or reset.** The dashboard and update forms do not touch the password (read from the code).
-- **Dead code.** The `/books/get_book_recommendation` route is commented out, `AIForm` and `book/templates/recommendation.html` are unused, and `book_api.py` contains an unused `send_request_to_openai` function that calls a different RapidAPI service.
-- **Deprecated APIs.** The code uses `datetime.utcnow` and `Query.get`.
+- **Unused exception classes.** `BookError`, `PostError`, `AuthorError` and `UserError` are caught in the routes but never raised.
+- **Python versions.** SQLAlchemy 2.0.31 is the lowest 2.0 release that imports on Python 3.14 (2.0.30 and older failed; checked by installing each). The sibling project `db_app_api/library_app` still pins an older SQLAlchemy and does not import on 3.14.
+- **Test warnings.** Flask-SQLAlchemy's `get_or_404` calls the legacy `Query.get`, which emits a deprecation warning in the tests.
 
 ## License
 
