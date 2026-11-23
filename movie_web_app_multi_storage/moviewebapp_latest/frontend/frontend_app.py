@@ -1,4 +1,7 @@
-"""Frontend html template rendering"""
+"""Frontend html template rendering."""
+import os
+import secrets
+
 from flask import abort, Flask, flash, render_template, redirect, request, url_for
 from flask_migrate import Migrate
 from flask_login import (
@@ -22,7 +25,7 @@ from frontend.movie_wtf import (
 
 
 app = Flask(__name__)
-app.secret_key = "***REMOVED***"
+app.secret_key = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
 app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{ffasm.SQLITE_STORAGE_PATH}"
 
 db.init_app(app)
@@ -38,7 +41,7 @@ login_manager.login_view = "signin"
 
 
 def check_html_state(form):
-    """prints if there is error(s) from given form field"""
+    """Prints if there is error(s) from given form field."""
     flash(f"Checking Current method {request.method}")
     for field, errors in form.errors.items():
         for error in errors:
@@ -50,7 +53,7 @@ def check_html_state(form):
 
 @login_manager.user_loader
 def load_user(user_id):
-    """Gets flask sessin object user key to assing storage type"""
+    """Gets flask sessin object user key to assing storage type."""
     storage_str = ffasm.session["user"].get("storage")
     storage = ffasm.get_storage_class(storage_text=storage_str)
     return storage.find_user(user_id=user_id)
@@ -58,7 +61,7 @@ def load_user(user_id):
 
 @app.route("/add_review/movie/<int:movie_id>", methods=["GET", "POST"])
 def add_review(movie_id):
-    """routes only accept if chosen storage SqliteStorage type"""
+    """Routes only accept if chosen storage SqliteStorage type."""
     storage_type = ffasm.session["user"].get("storage")
     user, storage = ffasm.get_user_and_storage()
     # to get User instance as db.Model
@@ -83,7 +86,7 @@ def add_review(movie_id):
 
 @app.route("/all-reviews")
 def all_reviews():
-    """Display all record in reviews table"""
+    """Display all record in reviews table."""
     _, storage = ffasm.get_user_and_storage()
     reviews = storage.all_revies()
     return render_template("all_reviews.html", reviews=reviews)
@@ -92,7 +95,7 @@ def all_reviews():
 @app.route("/dashboard")
 @login_required
 def dashboard():
-    """User Information view"""
+    """User Information view."""
     _, storage = ffasm.get_user_and_storage()
     movies = storage.get_user_movies(user_id=str(current_user.id))
     if movies is None:
@@ -108,7 +111,7 @@ def index():
 
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
-    """Html page tester"""
+    """Html page tester."""
     valid_storage_extensions = ["csv", "json", "sqlite"]
     form = UserForm()
     data = {}
@@ -228,7 +231,7 @@ def user_movies(user_id):
 @app.route("/user-update/<int:user_id>", methods=["GET", "POST"])
 @login_required
 def user_update(user_id):
-    """Find user by given user_id to update its info"""
+    """Find user by given user_id to update its info."""
     _, storage = ffasm.get_user_and_storage()
     form = UserUpdateForm()
     user = storage.find_user(user_id=user_id)
@@ -248,7 +251,7 @@ def user_update(user_id):
 @app.route("/user-delete/<int:user_id>", methods=["GET", "POST"])
 @login_required
 def user_delete(user_id):
-    """Find user by given user_id to delete its info"""
+    """Find user by given user_id to delete its info."""
     form = UserUpdateForm()
     _, storage = ffasm.get_user_and_storage()
     # Neccassary label taken from form so validate_on_submit would not work
@@ -308,7 +311,7 @@ def delete_movie(user_id, movie_id):
 @app.route("/user/<int:user_id>/movie/<int:movie_id>/info")
 @login_required
 def movie_info(user_id, movie_id):
-    """Individual Movie Page"""
+    """Individual Movie Page."""
     _, storage = ffasm.get_user_and_storage()
     try:
         movie = storage.get_target_movie(user_id, movie_id)
@@ -323,15 +326,15 @@ def movie_info(user_id, movie_id):
 # Custom Errors
 @app.errorhandler(404)
 def page_not_found(e):
-    """Page not found error"""
+    """Page not found error."""
     return render_template("index.html", title="404 Error", warning=e), 404
 
 
 @app.errorhandler(500)
 def internal_server_error(e):
-    """Page not found error"""
+    """Page not found error."""
     return render_template("index.html", title="500 Error", warning=e), 500
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=os.environ.get("FLASK_DEBUG") == "1")

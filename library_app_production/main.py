@@ -1,5 +1,11 @@
 """Flask app for database, create its database extension, and create its table."""
 
+from dotenv import load_dotenv
+
+# Load .env before importing app modules, some read env vars at import time
+load_dotenv()
+
+# pylint: disable=wrong-import-position
 from flask import Flask, render_template
 from flask_migrate import Migrate
 from flask_login import LoginManager
@@ -11,10 +17,19 @@ from book.broutes import book_bp
 from post.proutes import post_bp
 from user.uroutes import user_bp
 
+SECRET_KEY = os.environ.get("SECRET_KEY")
+if not SECRET_KEY:
+    raise RuntimeError("SECRET_KEY is not set. Copy .env.example to .env and set it.")
+
+# Fall back to the local SQLite file when no database URI is configured
+DATABASE_URI = os.environ.get("SQLALCHEMY_DATABASE_URI") or MYSQL_URI
+# Hosting providers often hand out postgres:// which SQLAlchemy 2 rejects
+if DATABASE_URI.startswith("postgres://"):
+    DATABASE_URI = DATABASE_URI.replace("postgres://", "postgresql://", 1)
+
 app = Flask(__name__)
-# ADD sqlite3 library.db by defined file path
-app.config["SQLALCHEMY_DATABASE_URI"] = os.environ.get("SQLALCHEMY_DATABASE_URI")
-app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY")
+app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URI
+app.config["SECRET_KEY"] = SECRET_KEY
 
 # CKEditor adding instance
 ckeditor = CKEditor(app)
@@ -42,20 +57,20 @@ login_manager.login_view = "user.login"
 # Injecting to base.html to extend in navbar
 @app.context_processor
 def base():
-    """Injection to base.html"""
+    """Injection to base.html."""
     form = SearchForm()
     return {"form": form}
 
 
 @login_manager.user_loader
 def load_user(user_id):
-    """Load user by its id"""
+    """Load user by its id."""
     return User.query.get(int(user_id))
 
 
 @app.route("/")
 def index():
-    """General view of all contents"""
+    """General view of all contents."""
     authors = Author.query.all()
     books = Book.query.all()
     posts = Post.query.all()
@@ -67,19 +82,19 @@ def index():
 
 @app.route("/date", methods=["GET", "POST"])
 def get_date():
-    """Get date"""
+    """Get date."""
     return {"date": datetime.now()}
 
 
 @app.errorhandler(404)
 def page_not_found(_):
-    """Page not found error"""
+    """Page not found error."""
     return ("<h2>Page Not Found 404</h2>"), 404
 
 
 @app.errorhandler(500)
 def internarl_error(_):
-    """Page not found error Internal Server Error 500"""
+    """Page not found error Internal Server Error 500."""
     return ("<h2>Internal Server Error 500</h2>"), 500
 
 

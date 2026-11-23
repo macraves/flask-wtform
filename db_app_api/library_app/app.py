@@ -1,4 +1,7 @@
 """Flask app for database, create its database extension, and create its table."""
+import os
+import secrets
+
 from flask import Flask, render_template
 from flask_migrate import Migrate
 from flask_login import LoginManager
@@ -13,7 +16,7 @@ from user.uroutes import user_bp
 app = Flask(__name__)
 # Create sqlite3 library.db by defined file path
 app.config["SQLALCHEMY_DATABASE_URI"] = MYSQL_URI
-app.config["SECRET_KEY"] = "***REMOVED***"
+app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
 
 # CKEditor adding instance
 ckeditor = CKEditor(app)
@@ -41,20 +44,20 @@ login_manager.login_view = "user.login"
 # Injecting to base.html to extend in navbar
 @app.context_processor
 def base():
-    """Injection to base.html"""
+    """Injection to base.html."""
     form = SearchForm()
     return {"form": form}
 
 
 @login_manager.user_loader
 def load_user(user_id):
-    """Load user by its id"""
+    """Load user by its id."""
     return User.query.get(int(user_id))
 
 
 @app.route("/")
 def index():
-    """General view of all contents"""
+    """General view of all contents."""
     authors = Author.query.all()
     books = Book.query.all()
     posts = Post.query.all()
@@ -66,21 +69,21 @@ def index():
 
 @app.route("/date", methods=["GET", "POST"])
 def get_date():
-    """Get date"""
+    """Get date."""
     return {"date": datetime.now()}
 
 
 @app.errorhandler(404)
 def page_not_found(_):
-    """Page not found error"""
+    """Page not found error."""
     return ("<h2>Page Not Found 404</h2>"), 404
 
 
 @app.errorhandler(500)
 def internarl_error(_):
-    """Page not found error Internal Server Error 500"""
+    """Page not found error Internal Server Error 500."""
     return ("<h2>Internal Server Error 500</h2>"), 500
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=os.environ.get("FLASK_DEBUG") == "1")

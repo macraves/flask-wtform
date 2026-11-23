@@ -1,6 +1,11 @@
 """MovieApp uses the Storage instance to store and retrieve movie data.
-UserShell interacts with the user and calls the appropriate methods on MovieApp."""
-import shutil
+
+UserShell interacts with the user and calls the appropriate methods on MovieApp.
+"""
+import hashlib
+import hmac
+import re
+import secrets
 from storage import StorageJson, StorageCsv, StorageError, os, json
 import movies_storage as webCalls
 from movies_storage import FunctionErrors
@@ -8,12 +13,36 @@ import ioput as io
 
 SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
 FOLDER_DIR = os.path.join(SCRIPT_DIR, "STORAGE")
+# Usernames become folder and file names, so only allow safe characters
+USERNAME_PATTERN = re.compile(r"^[a-z0-9_-]{1,32}$")
+HASH_ITERATIONS = 600_000
+
+
+def hash_password(password: str, salt: str) -> str:
+    """Hash a password with PBKDF2-HMAC-SHA256.
+
+    Args:
+        password (str): Plaintext password.
+        salt (str): Hex-encoded random salt.
+
+    Returns:
+        str: Hex-encoded password hash.
+    """
+    digest = hashlib.pbkdf2_hmac(
+        "sha256", password.encode("utf-8"), bytes.fromhex(salt), HASH_ITERATIONS
+    )
+    return digest.hex()
 
 
 class AppError(Exception):
     """AppError is a class for raising errors."""
 
     def __init__(self, message: str) -> None:
+        """Create the error with a message.
+
+        Args:
+            message (str): Error description.
+        """
         super().__init__(message)
 
 
@@ -21,11 +50,16 @@ class UserShellError(Exception):
     """UserShellError is a class for raising errors."""
 
     def __init__(self, message: str) -> None:
+        """Create the error with a message.
+
+        Args:
+            message (str): Error description.
+        """
         super().__init__(message)
 
 
 class MovieApp():
-    """Function calls for Storage instances"""
+    """Function calls for Storage instances."""
 
     @staticmethod
     def validate_storage(storage):
@@ -62,6 +96,11 @@ class MovieApp():
                 print("Do not interrupt the process")
 
     def __init__(self, storage) -> None:
+        """Connect the app to a storage instance.
+
+        Args:
+            storage: StorageJson or StorageCsv instance.
+        """
         self._storage = storage
 
     def add_movie(self):
@@ -116,27 +155,42 @@ class MovieApp():
         return webCalls.get_stat_movies(self._storage)
 
     def __str__(self):
+        """Return the connected storage file path."""
         return f"MovieApp connected directory:\n({self._storage.file_path})"
 
 
 class UserShell:
-    """User Interface class for the movie app
-    Sets user file path for write and read"""
+    """User Interface class for the movie app.
+
+    Sets user file path for write and read.
+    """
     _registry = os.path.join(SCRIPT_DIR, "registry")
     _write_html = os.path.join(SCRIPT_DIR, "_static")
 
     def __init__(self, user_data: dict) -> None:
+        """Validate and store the username and password.
+
+        Args:
+            user_data (dict): Holds "username" and "password".
+
+        Raises:
+            UserShellError: If the username contains unsafe characters.
+        """
         self.user_name = user_data["username"].strip().lower()
+        if not USERNAME_PATTERN.match(self.user_name):
+            raise UserShellError(
+                "Username may only use letters, digits, '_' or '-' (max 32)!! Aborted"
+            )
         self.password = user_data["password"]
 
     def registry_dir(self):
-        """get registry folder"""
+        """Get registry folder."""
         if not os.path.exists(UserShell._registry):
             os.makedirs(UserShell._registry)
         return UserShell._registry
 
     def user_registry_folder_dir(self):
-        """get folder path"""
+        """Get folder path."""
         registry_folder_path = os.path.join(
             self.registry_dir(), f'{self.user_name}')
         if not os.path.exists(registry_folder_path):
@@ -144,55 +198,86 @@ class UserShell:
         return registry_folder_path
 
     def user_registry_path(self):
-        """get registry path"""
+        """Get registry path."""
         return os.path.join(
             self.user_registry_folder_dir(), "registry.json")
 
     def get_user_movie_path(self):
-        """set user movie path"""
+        """Set user movie path."""
         if not os.path.exists(FOLDER_DIR):
             os.makedirs(FOLDER_DIR)
         return os.path.join(FOLDER_DIR, f"{self.user_name}")
 
     def get_app(self, file_path) -> None:
-        """get MovieApp instance for user"""
+        """Get MovieApp instance for user."""
         return MovieApp(file_path)
 
     def get_html_index(self):
-        """get html index"""
+        """Get html index."""
         return os.path.join(SCRIPT_DIR, "_static", "index_template.html")
 
     def get_updated_path(self):
-        """get updated html path"""
+        """Get updated html path."""
         return os.path.join(UserShell._write_html, f"{self.user_name}.html")
 
     def generate_user_webpage(self, istorage):
-        """generate user webpage"""
+        """Generate user webpage."""
         return webCalls.create_webpage(self, istorage)
 
-    def registry(self) -> str:
-        """Create a user file if it doesn't exist"""
+    def existing_registry_path(self):
+        """Get registry file path without creating any folder."""
+        return os.path.join(UserShell._registry, self.user_name, "registry.json")
+
+    def write_registry(self):
+        """Save username with a salted password hash to the registry file."""
+        salt = secrets.token_hex(16)
         user_data = {
             "username": self.user_name,
-            "password": self.password
+            "salt": salt,
+            "password_hash": hash_password(self.password, salt),
         }
         with open(self.user_registry_path(), "w", encoding="utf-8") as registry:
             json.dump(user_data, registry)
+
+    def registry(self) -> str:
+        """Create a user file if it doesn't exist.
+
+        Raises:
+            UserShellError: If the username is already registered.
+        """
+        if os.path.exists(self.existing_registry_path()):
+            raise UserShellError("User is already registered!! Aborted")
+        self.write_registry()
         print("NEW USER APPLICATION COMPLETED")
 
     def is_password_correct(self) -> bool:
-        """Check user instance password info in registry"""
-        if not os.path.exists(self.user_registry_path()):
-            directory_to_delete = self.user_registry_folder_dir()
-            shutil.rmtree(directory_to_delete)
+        """Check user instance password info in registry.
+
+        Records saved before hashing was added hold a plaintext password;
+        they are upgraded to a hash on the first successful sign in.
+
+        Raises:
+            UserShellError: If the user is not registered.
+        """
+        if not os.path.exists(self.existing_registry_path()):
             raise UserShellError("User is not registered!! Aborted")
-        with open(self.user_registry_path(), "r", encoding="utf-8") as registry:
+        with open(self.existing_registry_path(), "r", encoding="utf-8") as registry:
             user_data = json.load(registry)
-        return user_data["password"] == self.password
+        if "password_hash" in user_data:
+            given_hash = hash_password(self.password, user_data["salt"])
+            return hmac.compare_digest(given_hash, user_data["password_hash"])
+        # Compare as bytes: compare_digest rejects non-ASCII str input
+        is_correct = hmac.compare_digest(
+            user_data.get("password", "").encode("utf-8"),
+            self.password.encode("utf-8"),
+        )
+        if is_correct:
+            self.write_registry()
+        return is_correct
 
 
 def get_name_and_password():
-    """Takes user name and password"""
+    """Takes user name and password."""
     user_name = io.read_text("Please Enter your name: ")
     user_password = io.read_text("Please enter your password: ")
     user_data = {
@@ -203,7 +288,7 @@ def get_name_and_password():
 
 
 def checking_sign_info():
-    """Checks user registry info"""
+    """Checks user registry info."""
     if io.ask_to_continue("Have you been registed before y/n: "):
         user_info = get_name_and_password()
         user = UserShell(user_info)
@@ -245,9 +330,12 @@ def perform_movie_operation(user, user_storage, operation, command):
 
 
 def user_menu():
-    """Take user name and password to set UserShell instance
+    """Run the sign in flow and the movie operations menu.
+
+    Take user name and password to set UserShell instance
     and set storage type instance file path by given UserShell file path properties
-    connect 3 instance to MovieApp class and run MovieApp class methods"""
+    connect 3 instance to MovieApp class and run MovieApp class methods.
+    """
     try:
         # Assigns UserShell instance to user variable
         user = checking_sign_info()
@@ -296,7 +384,7 @@ def user_menu():
 
 
 def main():
-    """main function"""
+    """Main function."""
     user_menu()
 
 

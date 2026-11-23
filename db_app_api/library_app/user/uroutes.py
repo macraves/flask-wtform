@@ -1,6 +1,7 @@
-"""user related routes"""
+"""user related routes."""
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required, login_user, logout_user
+from permissions import can_modify, is_admin
 from allwebforms import UserForm, LoginForm
 from data_models import db, Author, Book, Post, User
 
@@ -9,9 +10,14 @@ user_bp = Blueprint("user", __name__, url_prefix="/users", template_folder="temp
 
 
 class UserError(Exception):
-    """User error"""
+    """User error."""
 
     def __init__(self, message):
+        """Store the error message.
+
+        Args:
+            message (str): Error description.
+        """
         self.message = message
 
 
@@ -19,9 +25,8 @@ class UserError(Exception):
 @user_bp.route("/admin")
 @login_required
 def admin():
-    """Admin page"""
-    idx = current_user.id
-    if idx == 1:
+    """Admin page."""
+    if is_admin():
         flash("Welcome to the admin page")
         authors = Author.query.all()
         books = Book.query.all()
@@ -95,7 +100,7 @@ def logout():
 
 @user_bp.route("get_user/<int:user_id>/")
 def get_user(user_id):
-    """Get user"""
+    """Get user."""
     user = User.query.get_or_404(user_id)
     if user is None:
         flash("User not found")
@@ -105,14 +110,14 @@ def get_user(user_id):
 
 @user_bp.route("/")
 def users_all():
-    """Users page"""
+    """Users page."""
     users = User.query.all()
     return render_template("users_all.html", header="All Users", users=users)
 
 
 @user_bp.route("/add", methods=["GET", "POST"])
 def user_add():
-    """Add user"""
+    """Add user."""
     form = UserForm()
     if form.validate_on_submit():
         user = User(
@@ -139,8 +144,11 @@ def user_add():
 @user_bp.route("/user/update/<int:user_id>/", methods=["GET", "POST"])
 @login_required
 def user_update(user_id):
-    """Update user"""
+    """Update user."""
     user = User.query.get_or_404(user_id)
+    if not can_modify(user.id):
+        flash("You can only change your own account")
+        return redirect(url_for("user.users_all"))
     if user is None:
         flash("User not found")
         return redirect("/users")
@@ -165,8 +173,11 @@ def user_update(user_id):
 @user_bp.route("/user/delete/<int:user_id>/", methods=["GET", "POST"])
 @login_required
 def user_delete(user_id):
-    """Delete user"""
+    """Delete user."""
     user = User.query.get_or_404(user_id)
+    if not can_modify(user.id):
+        flash("You can only delete your own account")
+        return redirect(url_for("user.users_all"))
     if user is None:
         flash("User not found")
         return redirect("/users")
@@ -180,7 +191,7 @@ def user_delete(user_id):
 
 
 def reset_user_form(form):
-    """Reset user form"""
+    """Reset user form."""
     form.name.data = ""
     form.username.data = ""
     form.email.data = ""

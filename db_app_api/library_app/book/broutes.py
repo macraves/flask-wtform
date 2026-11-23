@@ -1,6 +1,7 @@
-"""book related routes"""
+"""book related routes."""
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
+from permissions import can_modify
 from sqlalchemy import asc, desc, func
 from allwebforms import BookForm, SearchForm
 from data_models import db, Book, Author
@@ -11,14 +12,19 @@ book_bp = Blueprint("book", __name__, url_prefix="/books", template_folder="temp
 
 
 class BookError(Exception):
-    """book error"""
+    """book error."""
 
     def __init__(self, message):
+        """Store the error message.
+
+        Args:
+            message (str): Error description.
+        """
         self.message = message
 
 
 def reset_book_form(form):
-    """Reset pos form"""
+    """Reset pos form."""
     form.title.data = ""
     form.author.data = ""
     form.isbn.data = ""
@@ -28,7 +34,7 @@ def reset_book_form(form):
 
 @book_bp.route("/search", methods=["POST"])
 def search():
-    """Search book by title or author by name"""
+    """Search book by title or author by name."""
     form = SearchForm(request.form)
     if form.validate_on_submit():
         searched = form.searched.data.lower().strip()
@@ -53,7 +59,7 @@ def search():
 
 @book_bp.route("/get_book/<int:book_id>/")
 def get_book(book_id):
-    """Get book"""
+    """Get book."""
     book = Book.query.get_or_404(book_id)
     if book is None:
         flash("book not found")
@@ -63,7 +69,7 @@ def get_book(book_id):
 
 @book_bp.route("/", methods=["GET"])
 def books_all():
-    """Books page"""
+    """Books page."""
     valid_sort_params = ["title", "author"]
     sort_param = request.args.get("sort")
     if sort_param in valid_sort_params:
@@ -87,7 +93,7 @@ def books_all():
 @book_bp.route("/add", methods=["GET", "POST"])
 @login_required
 def book_add():
-    """Add book"""
+    """Add book."""
     if not current_user.is_authenticated:
         flash("You need to login first")
         return redirect(url_for("user.login"))
@@ -123,11 +129,14 @@ def book_add():
 @book_bp.route("/book/update/<int:book_id>/", methods=["GET", "POST"])
 @login_required
 def book_update(book_id):
-    """Update book"""
+    """Update book."""
     book = Book.query.get_or_404(book_id)
     if book is None:
         flash("book not found")
         return redirect("/books/all")
+    if not can_modify(book.user_id):
+        flash("You can only change your own books")
+        return redirect(url_for("book.books_all"))
     form = BookForm(obj=book)
     if request.method == "POST":
         book.title = request.form.get("title").title().strip()
@@ -148,11 +157,14 @@ def book_update(book_id):
 @book_bp.route("/book/delete/<int:book_id>/", methods=["GET", "POST"])
 @login_required
 def book_delete(book_id):
-    """Delete book"""
+    """Delete book."""
     book = Book.query.get_or_404(book_id)
     if book is None:
         flash("book not found")
         return redirect("/books")
+    if not can_modify(book.user_id):
+        flash("You can only delete your own books")
+        return redirect(url_for("book.books_all"))
     flash(f"<strong>book ID: {book.id}</strong> has been deleted")
     try:
         db.session.delete(book)

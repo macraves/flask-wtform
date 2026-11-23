@@ -1,6 +1,7 @@
-"""post related routes"""
+"""post related routes."""
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
+from permissions import can_modify
 from allwebforms import PostForm, SearchForm
 from data_models import db, Post
 
@@ -9,14 +10,19 @@ post_bp = Blueprint("post", __name__, url_prefix="/posts", template_folder="temp
 
 
 class PostError(Exception):
-    """Post error"""
+    """Post error."""
 
     def __init__(self, message):
+        """Store the error message.
+
+        Args:
+            message (str): Error description.
+        """
         self.message = message
 
 
 def reset_post_form(form):
-    """Reset pos form"""
+    """Reset pos form."""
     form.title.data = ""
     form.subtitle.data = ""
     form.content.data = ""
@@ -25,7 +31,7 @@ def reset_post_form(form):
 # Create search function for post content
 @post_bp.route("/search", methods=["POST"])
 def search():
-    """Search function"""
+    """Search function."""
     form = SearchForm()
     if form.validate_on_submit():
         searched = form.searched.data
@@ -36,7 +42,7 @@ def search():
 
 @post_bp.route("/get_post/<int:post_id>/")
 def get_post(post_id):
-    """Get post"""
+    """Get post."""
     post = Post.query.get_or_404(post_id)
     if post is None:
         flash("post not found")
@@ -46,7 +52,7 @@ def get_post(post_id):
 
 @post_bp.route("/")
 def posts_all():
-    """posts page"""
+    """Posts page."""
     posts = Post.query.all()
     return render_template("posts_all.html", header="All posts", posts=posts)
 
@@ -54,7 +60,7 @@ def posts_all():
 @post_bp.route("/add", methods=["GET", "POST"])
 @login_required
 def post_add():
-    """Add post"""
+    """Add post."""
     if not current_user.is_authenticated:
         flash("You need to login first")
         return redirect(url_for("user.login"))
@@ -80,11 +86,14 @@ def post_add():
 @post_bp.route("/post/update/<int:post_id>/", methods=["GET", "POST"])
 @login_required
 def post_update(post_id):
-    """Update post"""
+    """Update post."""
     post = Post.query.get_or_404(post_id)
     if post is None:
         flash("post not found")
         return redirect("/posts/all")
+    if not can_modify(post.author_id):
+        flash("You can only change your own posts")
+        return redirect(url_for("post.posts_all"))
     form = PostForm(obj=post)
     if request.method == "POST":
         post.title = request.form.get("title").title().strip()
@@ -105,11 +114,14 @@ def post_update(post_id):
 @post_bp.route("/post/delete/<int:post_id>/", methods=["GET", "POST"])
 @login_required
 def post_delete(post_id):
-    """Delete post"""
+    """Delete post."""
     post = Post.query.get_or_404(post_id)
     if post is None:
         flash("post not found")
         return redirect("/posts")
+    if not can_modify(post.author_id):
+        flash("You can only delete your own posts")
+        return redirect(url_for("post.posts_all"))
     flash(f"<strong>Post ID: {post.id}</strong> has been deleted")
     try:
         db.session.delete(post)

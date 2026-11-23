@@ -1,8 +1,10 @@
 """Methods for stored objects in a file."""
+import os
+
 import requests
 from storage import json
 
-YOUR_API_KEY = "***REMOVED***"
+YOUR_API_KEY = os.environ.get("OMDB_API_KEY")
 BASE_URL = "http://www.omdbapi.com"
 
 
@@ -10,17 +12,29 @@ class FunctionErrors(Exception):
     """FunctionErrors is a class for raising errors."""
 
     def __init__(self, message: object) -> None:
+        """Create the error with a message.
+
+        Args:
+            message (object): Error description.
+        """
         super().__init__(message)
 
 
 def get_name_method_requests(method_name: str, movie_name: str) -> str:
-    """Sets the  movie name search end point method.
+    """Build the OMDb search URL for a movie name.
+
     Args:
         method_name (str): "name" string.
         movie_name (str): given string by user.
+
     Returns:
         str: returns whole url modified by user input.
+
+    Raises:
+        FunctionErrors: If OMDB_API_KEY is not set.
     """
+    if not YOUR_API_KEY:
+        raise FunctionErrors("OMDB_API_KEY environment variable is not set")
     method_api = {
         "name": f"{BASE_URL}/?t={movie_name}&apikey={YOUR_API_KEY}"
     }
@@ -30,9 +44,11 @@ def get_name_method_requests(method_name: str, movie_name: str) -> str:
 
 
 def get_by_name(movie_name: str) -> dict:
-    """get_by_name is a method that returns a dict.
+    """Fetch a movie from OMDb by title.
+
     Args:
         movie_name (str): given string by user.
+
     Returns:
         parsed_data: returns dictionary of movie.
     """
@@ -57,10 +73,16 @@ def get_by_name(movie_name: str) -> dict:
 
 
 def get_sort_movies(instance):
-    """
-    Sorts the movies database.
-    Loads the information from the file, sorts the movies,
-    The function doesn't need to validate the input.
+    """Sort the stored movies by rating in the order the user picks.
+
+    Args:
+        instance: Storage instance providing list_movies().
+
+    Returns:
+        str: Numbered list of sorted movies.
+
+    Raises:
+        FunctionErrors: If the sorting input is not 'asc' or 'desc'.
     """
     data = instance.list_movies()
     valid_entries = {"asc": False, "desc": True}
@@ -77,9 +99,13 @@ def get_sort_movies(instance):
 
 
 def get_stat_movies(instance):
-    """
-    Returns a dictionary of dictionaries that
-    contains the movies information in the database.
+    """Return max, min and average rating of the stored movies.
+
+    Args:
+        instance: Storage instance providing list_movies().
+
+    Returns:
+        str: Formatted rating statistics.
     """
     data = instance.list_movies()
     max_rating = max(data.values(), key=lambda x: float(x['imdbRating']))
@@ -93,7 +119,14 @@ Average rating: {average_rating:.2f}"""
 
 
 def create_movies_list_html(movies):
-    """Create a list of movies in html format"""
+    """Create a list of movies in html format.
+
+    Args:
+        movies (dict): Movies keyed by title.
+
+    Returns:
+        str: HTML list items for the movie grid.
+    """
     # target = "__TEMPLATE_MOVIE_GRID__"
     html_code = []
     for key, value in movies.items():
@@ -117,8 +150,12 @@ def create_movies_list_html(movies):
 
 
 def replace_in_html(user, replacement):
-    """Replace target in html file with replacement"""
+    """Replace target in html file with replacement.
 
+    Args:
+        user: User object providing template and output paths.
+        replacement (str): HTML to insert into the movie grid.
+    """
     with open(user.get_html_index(), "r", encoding="utf-8") as current_html:
         with open(user.get_updated_path(), "w", encoding="utf-8") as new_html:
             source_html = current_html.read()
@@ -132,7 +169,15 @@ def replace_in_html(user, replacement):
 
 
 def create_webpage(user, instance):
-    """Main generate user webpage function"""
+    """Generate the user's movie webpage.
+
+    Args:
+        user: User object providing template and output paths.
+        instance: Storage instance providing list_movies().
+
+    Returns:
+        str: Success message.
+    """
     movies_data = instance.list_movies()
     html_str = create_movies_list_html(movies_data)
     replace_in_html(user, html_str)

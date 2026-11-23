@@ -1,4 +1,7 @@
-"""Frontend html template rendering"""
+"""Frontend html template rendering."""
+import os
+import secrets
+
 from flask import Flask, flash, render_template, request, session, redirect, url_for
 from flask_migrate import Migrate
 from frontend.movie_wtf import UserForm, MovieForm, MovieUpdateForm, SigninForm
@@ -14,7 +17,7 @@ SQLITE_STORAGE = SqliteStorage(FILE_NAME)
 SQLITE_STORAGE_PATH = SQLITE_STORAGE.filename
 
 app = Flask(__name__)
-app.secret_key = "***REMOVED***"
+app.secret_key = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
 app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{SQLITE_STORAGE_PATH}"
 
 db.init_app(app)
@@ -28,11 +31,16 @@ class FrontendError(Exception):
     """Custom exception class for frontend errors."""
 
     def __init__(self, message: str) -> None:
+        """Create the error with a message.
+
+        Args:
+            message (str): Error description.
+        """
         super().__init__(message)
 
 
 def clean_user_form(form):
-    """WTFORM cleaner"""
+    """WTFORM cleaner."""
     form.name.data = ""
     form.username.data = ""
     form.email.data = ""
@@ -41,7 +49,7 @@ def clean_user_form(form):
 
 
 def clean_session_keys():
-    """Previously assingend key deleted"""
+    """Previously assingend key deleted."""
     if "user" in session:
         del session["user"]
     if "storage" in session:
@@ -51,7 +59,7 @@ def clean_session_keys():
 
 
 def check_errors(form):
-    """prints if there is error(s) from given form field"""
+    """Prints if there is error(s) from given form field."""
     flash(f"Checking Current method {request.method}")
     for field, errors in form.errors.items():
         for error in errors:
@@ -62,7 +70,7 @@ def check_errors(form):
 
 
 def get_storage_class(storage_text):
-    """Assigns class name to storage varible"""
+    """Assigns class name to storage varible."""
     storage_text = storage_text.lower().strip()
     if storage_text == "json":
         storage = JsonStorage(FILE_NAME)
@@ -74,7 +82,7 @@ def get_storage_class(storage_text):
 
 
 def get_user_and_storage():
-    """Session object user and storage key values"""
+    """Session object user and storage key values."""
     user = session.get("user")
     storage_text = session.get("user").get("storage")
     storage = get_storage_class(storage_text)
@@ -82,7 +90,7 @@ def get_user_and_storage():
 
 
 def assign_session_values(data):
-    """Creation session flask object values"""
+    """Creation session flask object values."""
     clean_session_keys()
     session["user"] = {
         "name": data.get("name"),
@@ -94,7 +102,7 @@ def assign_session_values(data):
 
 
 def flash_session_properties():
-    """Test purpose flash object where session details can be tracked"""
+    """Test purpose flash object where session details can be tracked."""
     user_id = session["user"].get("id")
     storage_type = session["user"].get("storage")
     name = session["user"].get("name")
@@ -111,7 +119,7 @@ def index():
 
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
-    """Html page tester"""
+    """Html page tester."""
     if session.get("user", None) is not None:
         flash("Current user forced to sign out")
         return redirect("signout")
@@ -279,15 +287,15 @@ def user_movies(user_id):
 # Custom Errors
 @app.errorhandler(404)
 def page_not_found(e):
-    """Page not found error"""
+    """Page not found error."""
     return render_template("index.html", title="404 Error", warning=e), 404
 
 
 @app.errorhandler(500)
 def internal_server_error(e):
-    """Page not found error"""
+    """Page not found error."""
     return render_template("index.html", title="500 Error", warning=e), 500
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=os.environ.get("FLASK_DEBUG") == "1")
