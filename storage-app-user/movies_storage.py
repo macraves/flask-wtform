@@ -92,7 +92,8 @@ def get_sort_movies(instance):
     data = instance.list_movies()
     valid_entries = {"asc": False, "desc": True}
     user_choice = input("Enter the order of sorting 'asc' or 'desc': ")
-    if not user_choice.strip().lower() in valid_entries:
+    user_choice = user_choice.strip().lower()
+    if user_choice not in valid_entries:
         raise FunctionErrors("Invalid sorting input")
 
     sorted_movies = sorted(
@@ -113,6 +114,8 @@ def get_stat_movies(instance):
         str: Formatted rating statistics.
     """
     data = instance.list_movies()
+    if not data:
+        raise FunctionErrors("No movies in database")
     max_rating = max(data.values(), key=lambda x: float(x['imdbRating']))
     min_rating = min(data.values(), key=lambda x: float(x['imdbRating']))
     average_rating = sum(float(item['imdbRating'])
@@ -138,15 +141,15 @@ def create_movies_list_html(movies):
         template = '''<li>
             <div class="movie">
                 <img class="movie-poster"
-                     src={poster}
+                     src="{poster}"
                      title=""/>
                 <div class="movie-title">{title}</div>
                 <div class="movie-year">{year}</div>
             </div>
         </li>'''
-        title = key
-        year = value["Year"]
-        poster = value["Poster"]
+        title = html.escape(str(key))
+        year = html.escape(str(value["Year"]))
+        poster = html.escape(str(value["Poster"]))
 
         template = template.format(
             poster=poster, title=title, year=year)
