@@ -14,7 +14,7 @@ These are learning exercises. Each README says so and lists its known limitation
 | --- | --- | --- | --- |
 | [Best-Buy](./Best-Buy) | Store inventory CLI: three product types, three promotion types, a shopping cart and order totals | Python, `unittest` | 20 unit tests |
 | [backend_api](./backend_api) | Blog post REST API (list, search, add, update, delete) with a small Flask front end | Flask, Flask-CORS, Faker | none |
-| [masterblog](./masterblog) | Blog with create, read, update, delete and like, storing posts in a JSON file | Flask, WTForms, CKEditor | none |
+| [masterblog](./masterblog) | Blog with create, read, update, delete and like, storing posts in a JSON file | Flask, WTForms, CKEditor | 15 pytest tests, CI |
 | [movie_web_app_multi_storage](./movie_web_app_multi_storage) | Movie collection app whose users choose SQLite, JSON or CSV storage, with a JSON API | Flask, SQLAlchemy, Flask-Login, OMDb API | manual script |
 | [storage-app-user](./storage-app-user) | Command-line movie collection manager using the OMDb API | Python, Requests | none |
 | [data_scientist](./data_scientist) | Flight delay analysis. It now lives in its own repository: [flight-data-analysis](https://github.com/macraves/flight-data-analysis) | SQLAlchemy, matplotlib, seaborn, folium, Flask | in the new repo |
