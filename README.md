@@ -2,15 +2,20 @@
 
 Eight small projects from my path into Python backend development: Flask web apps and APIs, SQLAlchemy models, and command-line tools. They are learning projects, not production systems. This page says what each one contains and where the rough edges are.
 
-## Projects
+## Flagship
+
+**[library_app_production](./library_app_production)** is the project to look at first: a Flask app for authors, books and posts with user accounts, owner-or-admin authorization, CSRF protection, sanitised rich-text input, and configuration through environment variables. Its README lists exactly what it does, how to run it, and its known bugs. It has no automated test suite yet and has not been deployed.
+
+## Other projects
+
+These are learning exercises. Each README says so and lists its known limitations.
 
 | Project | What it is | Built with | Tests |
 | --- | --- | --- | --- |
 | [Best-Buy](./Best-Buy) | Store inventory CLI: three product types, three promotion types, a shopping cart and order totals | Python, `unittest` | 20 unit tests |
 | [backend_api](./backend_api) | Blog post REST API (list, search, add, update, delete) with a small Flask front end | Flask, Flask-CORS, Faker | none |
 | [masterblog](./masterblog) | Blog with create, read, update, delete and like, storing posts in a JSON file | Flask, WTForms, CKEditor | none |
-| [db_app_api/library_app](./db_app_api) | Library site with authors, books, posts and user accounts, split into four Blueprints | Flask, SQLAlchemy, Flask-Login, WTForms, CKEditor | none |
-| [library_app_production](./library_app_production) | The same library app, configured through environment variables and a Gunicorn `Procfile` | as above, plus Gunicorn | none |
+| [db_app_api/library_app](./db_app_api) | The development predecessor of the flagship: the same library site with the same hardening | Flask, SQLAlchemy, Flask-Login, WTForms, CKEditor | none |
 | [movie_web_app_multi_storage](./movie_web_app_multi_storage) | Movie collection app whose users choose SQLite, JSON or CSV storage, with a JSON API | Flask, SQLAlchemy, Flask-Login, OMDb API | manual script |
 | [storage-app-user](./storage-app-user) | Command-line movie collection manager using the OMDb API | Python, Requests | none |
 | [data_scientist](./data_scientist) | Flight delay analysis. It now lives in its own repository: [flight-data-analysis](https://github.com/macraves/flight-data-analysis) | SQLAlchemy, matplotlib, seaborn, folium, Flask | in the new repo |
@@ -24,7 +29,8 @@ Each project has its own `requirements.txt` and README. Entry points: `Best-Buy/
 - **Authentication.** Flask-Login handles sessions in the library and movie apps.
 - **Parameterised queries.** The flight analysis project passes values to SQL as bound parameters, and its tests check an injection-style input.
 - **Object-oriented design.** `Best-Buy` uses an abstract promotion base class with percentage-discount, second-half-price and third-one-free subclasses.
-- **Environment-based config.** `library_app_production` reads `SECRET_KEY` and `SQLALCHEMY_DATABASE_URI` from the environment, and its `Procfile` runs `gunicorn main:app`. I have not deployed it.
+- **Authorization and web security.** The library apps check owner-or-admin rights in one module (`permissions.py`), require a CSRF token on every POST, sanitise rich-text post content with `nh3`, and accept only POST for deletes and logout. The movie apps check that users can only change their own accounts and movies.
+- **Environment-based config.** No API key or secret is hard-coded: `SECRET_KEY` and the OMDb and RapidAPI keys come from environment variables or a local `.env` (each project that needs one ships a `.env.example`). `library_app_production` refuses to start without `SECRET_KEY`; the other Flask apps warn and fall back to a random key. Its `Procfile` runs `gunicorn main:app`, which I have not deployed.
 - **Documentation habits.** A script I ran over the repo counted 571 functions: 86% have a docstring and 27% have type hints.
 
 ## Known gaps
@@ -33,11 +39,13 @@ I would rather list these than have a reviewer find them.
 
 - **Testing is thin.** Only `Best-Buy` has real automated tests (20, all passing). The movie app's `test_backend.py` is a manual script that needs the server running. The Flask apps have no tests.
 - **Admin access is one hard-coded check.** In the library apps, `/users/admin` allows the user whose ID is `1`. There are no roles.
-- **Demo secrets are committed.** `db_app_api` and `masterblog` set `SECRET_KEY` to a literal string. Only the production variant reads it from the environment.
+- **Known bugs are documented, not all fixed.** The library apps crash on the book update page and on an empty search; the movie app's add-review route returns 500; `backend_api` never sorts by title or content. Each project README lists its own bugs with the file and line.
+- **Python version.** The library apps pin a SQLAlchemy release that does not import on Python 3.14. They were run on Python 3.12.
+- **Plaintext passwords in the movie apps.** For JSON storage, `moviewebapp_latest` writes the password to `registry/registry.json` unhashed, and the older `using session` variant stores plaintext passwords throughout. `storage-app-user` and the library apps hash passwords.
 - **Migrations are wired up but unused.** Flask-Migrate is initialised in the library apps, but there is no `migrations/` folder, so schema changes were not tracked.
 - **A misleading name.** In the library apps, `MYSQL_URI` actually holds a SQLite path. Nothing here connects to MySQL.
 - **Version handling in `backend_api` is simple.** A `VERSION` dictionary maps `"0"` to an in-memory post list and `"1.0"`, `"1.1"` and `"1.2"` to the same JSON loader. It is a version switch, not a schema-migration system.
-- **I did not re-run the web apps when I rewrote this page.** I ran the `Best-Buy` tests and checked the other claims against the source.
+- **How the READMEs were checked.** Each project README was rewritten from the code, then re-checked by a second reviewer who ran the setup steps and the documented routes on a clean copy. Real OMDb and RapidAPI calls were not exercised (no keys were used), and `gunicorn` and the `Procfile` were not run.
 
 ## License
 

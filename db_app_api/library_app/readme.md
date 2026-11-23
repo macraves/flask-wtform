@@ -1,338 +1,103 @@
-# Library Management System
+# Library App (learning project)
 
-Full-stack Flask application with user authentication, admin controls, and comprehensive CRUD operations for library management.
+A small Flask app for managing authors, books, blog-style posts and users, backed by SQLite. It is the development predecessor of the main app in [`library_app_production`](../../library_app_production/readme.md). It has the same CSRF, authorization and HTML-sanitising measures, but not that app's mandatory `SECRET_KEY` check: this one warns and falls back to a random key. Read that README for the detailed security and deployment story. This one only describes what is in this folder.
 
-![Python](https://img.shields.io/badge/Python-3.8%2B-blue.svg)
-![Flask](https://img.shields.io/badge/Flask-3.0-green.svg)
-![SQLAlchemy](https://img.shields.io/badge/SQLAlchemy-2.0-red.svg)
+## Quick start
 
----
+Tested on Python 3.12 with a fresh virtual environment. Python 3.14 failed: the pinned `SQLAlchemy==2.0.23` raises an `AssertionError` on import.
 
-## Overview
-
-Complete library management system built with Flask and SQLAlchemy ORM. Features user authentication with role-based access control, relational database design, and rich text editing capabilities. The first registered user (ID: 1) becomes the admin with full system privileges.
-
----
-
-## Features
-
-- **User Authentication**: Registration, login, password hashing with Werkzeug
-- **Role-Based Access Control**: Admin (User ID 1) has exclusive author management rights
-- **Multi-Entity CRUD**: Manage users, authors, books, and blog posts
-- **Relational Database**: Foreign key relationships between entities
-- **Rich Text Editing**: CKEditor integration for blog posts
-- **Search Functionality**: Search across books, authors, and posts
-- **Blueprint Architecture**: Modular application structure
-- **Database Migrations**: Flask-Migrate for schema versioning
-- **Responsive UI**: Bootstrap-styled templates with WTForms
-
----
-
-## Tech Stack
-
-| Technology | Purpose |
-|------------|---------|
-| Flask | Web framework |
-| SQLAlchemy | ORM and database management |
-| Flask-Login | User session management |
-| Flask-WTF | Form validation and CSRF protection |
-| Flask-Migrate | Database migrations |
-| Flask-CKEditor | Rich text editor |
-| Bootstrap | Frontend styling |
-| SQLite | Database engine |
-| Werkzeug | Password hashing |
-
----
-
-## Database Schema
-
-### Users Table
-- User authentication and profile management
-- One-to-many relationship with Books and Posts
-
-### Authors Table
-- Author information with birth/death dates
-- One-to-many relationship with Books
-- Admin-only management
-
-### Books Table
-- ISBN, title, publication year, condition
-- Foreign keys: `author_id`, `user_id`
-- Many-to-one relationships
-
-### Posts Table
-- Blog posts with title, subtitle, content
-- Foreign key: `author_id` (User)
-- Rich text content support
-
----
-
-## Prerequisites
-
-- Python 3.8 or higher
-- pip (Python package manager)
-
----
-
-## Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/macraves/flask-wtform.git
-cd flask-wtform/db_app_api/library_app
-
-# Create virtual environment
-python -m venv venv
-
-# Activate virtual environment
-# On Windows:
-venv\Scripts\activate
-# On macOS/Linux:
-source venv/bin/activate
-
-# Install dependencies
+```powershell
+cd db_app_api\library_app
+py -3.12 -m venv .venv
+.venv\Scripts\Activate.ps1
 pip install -r requirements.txt
-```
-
----
-
-## Usage
-
-### Running the Application
-
-```bash
+Copy-Item .env.example .env
 python app.py
 ```
 
-**Application URL**: `http://localhost:5000`
+The app then listens on <http://127.0.0.1:5000/>. On first start it creates `data/library.sqlite` next to `data_models.py` and runs `db.create_all()`. `.env` is loaded with `python-dotenv` at the top of `app.py`.
 
-### First-Time Setup
+| Variable | Required | Effect |
+| --- | --- | --- |
+| `SECRET_KEY` | No | If empty, a random key is generated with a warning and sessions reset on every restart. |
+| `RAPIDAPI_KEY` | No | Enables book cover lookup by ISBN (RapidAPI Book Cover API). Without it books are saved with no cover. |
+| `FLASK_DEBUG` | No | Debug mode is on only when it equals `1`. |
 
-1. Navigate to `http://localhost:5000`
-2. Register the first user (becomes admin automatically)
-3. Admin can now manage authors, books, users, and posts
+## Routes
 
----
+Each blueprint is mounted under its own prefix. "Login" means `@login_required`.
 
-## Application Structure
+| Prefix | Route | Methods | Access |
+| --- | --- | --- | --- |
+| `/` | `/` | GET | public |
+| `/` | `/date` | GET, POST | public, returns JSON date |
+| `/authors` | `/`, `/get_author/<id>/` | GET | public |
+| `/authors` | `/add` | GET, POST | login |
+| `/authors` | `/update/<id>/` | GET, POST | admin only |
+| `/authors` | `/delete/<id>/` | POST | admin only, also deletes the author's books |
+| `/books` | `/`, `/get_book/<id>/` | GET | public (`/books/?sort=title\|author&order=asc\|desc`) |
+| `/books` | `/search` | POST | public |
+| `/books` | `/add` | GET, POST | login |
+| `/books` | `/book/update/<id>/`, `/book/delete/<id>/` | GET/POST, POST | owner or admin |
+| `/posts` | `/`, `/get_post/<id>/` | GET | public |
+| `/posts` | `/search` | POST | public |
+| `/posts` | `/add` | GET, POST | login |
+| `/posts` | `/post/update/<id>/`, `/post/delete/<id>/` | GET/POST, POST | owner or admin |
+| `/users` | `/`, `/get_user/<id>/` | GET | public |
+| `/users` | `/add` | GET, POST | public (this is registration) |
+| `/users` | `/login` | GET, POST | public |
+| `/users` | `/logout` | POST | login |
+| `/users` | `/dashboard` | GET, POST | login, edits your own profile |
+| `/users` | `/admin` | GET | admin only |
+| `/users` | `/user/update/<id>/`, `/user/delete/<id>/` | GET/POST, POST | the user themselves or admin |
 
-```
+Deletes, logout and both search endpoints accept POST only. A GET returns 405.
+
+## Permissions
+
+`permissions.py` defines the admin as the user with `id == 1`. `can_modify(owner_id)` is true for the record owner or the admin. Books are owned through `Book.user_id`, posts through `Post.author_id`.
+
+## Security measures present
+
+- CSRF protection on every POST through `CSRFProtect`. A missing or expired token redirects to `/` with a flash message. Delete and logout buttons are small POST forms carrying the token.
+- Post content is rendered through a `sanitize_html` filter built on `nh3`. A test post containing `<script>` and an `onclick` attribute came back with both removed.
+- Flash messages that include user input are built with `Markup(...).format(...)`, which escapes the inserted values.
+- Passwords are stored with `werkzeug.security.generate_password_hash` (scrypt hashes in the test database) and checked with `check_password_hash`.
+- Delete and logout are POST-only, and update/delete routes check ownership or admin status on the server.
+
+## Structure
+
+```text
 library_app/
-├── app.py                   # Main application entry point
-├── data_models.py           # SQLAlchemy models (User, Author, Book, Post)
-├── allwebforms.py           # WTForms definitions
-├── book_api.py              # Book-related API endpoints
-├── author/
-│   ├── aroutes.py           # Author blueprint routes
-│   └── templates/           # Author-specific templates
-├── book/
-│   ├── broutes.py           # Book blueprint routes
-│   └── templates/           # Book-specific templates
-├── post/
-│   ├── proutes.py           # Post blueprint routes
-│   └── templates/           # Post-specific templates
-├── user/
-│   ├── uroutes.py           # User blueprint routes
-│   └── templates/           # User-specific templates
-├── templates/
-│   ├── base.html            # Base template
-│   ├── index.html           # Homepage
-│   └── navbar.html          # Navigation bar
-├── static/
-│   └── css/
-│       └── style.css        # Custom styles
-├── data/
-│   └── library.sqlite       # SQLite database (auto-created)
-├── requirements.txt         # Python dependencies
-└── readme.md                # This file
+  app.py            app setup, CSRF, nh3 filter, blueprints, error handlers
+  data_models.py    SQLAlchemy models: User, Author, Book, Post; MYSQL_URI
+  allwebforms.py    Flask-WTF forms
+  permissions.py    is_admin(), can_modify()
+  book_api.py       RapidAPI cover lookup
+  author/ book/ post/ user/   blueprint (aroutes.py etc.) plus templates
+  templates/        base, navbar, index, shared macros
+  static/css/       style.css
+  requirements.txt
+  .env.example
 ```
 
----
+The stack is Flask 3.1.3, Flask-SQLAlchemy 3.1.1, Flask-Login, Flask-WTF, Flask-CKEditor, Flask-Migrate and `nh3`, as pinned in `requirements.txt`.
 
-## User Roles
+## Known limitations
 
-### Admin (User ID = 1)
-- Full access to all features
-- Exclusive author management (add/edit/delete)
-- Can modify all books and posts
-- User management capabilities
+The crashes below were reproduced with the Flask test client on a copy of the code; the others were confirmed by reading the code.
 
-### Regular Users
-- Manage own books and posts
-- View all public content
-- Cannot manage authors
-- Profile management
-
----
-
-## Key Routes
-
-### Authentication
-- `/users/register` - User registration
-- `/users/login` - User login
-- `/users/logout` - User logout
-- `/users/dashboard` - User dashboard
-
-### Authors (Admin Only)
-- `/authors/all` - List all authors
-- `/authors/add` - Add new author
-- `/authors/<id>` - View author details
-- `/authors/update/<id>` - Edit author
-- `/authors/delete/<id>` - Delete author
-
-### Books
-- `/books/all` - List all books
-- `/books/add` - Add new book
-- `/books/<id>` - View book details
-- `/books/update/<id>` - Edit book (owner only)
-- `/books/delete/<id>` - Delete book (owner only)
-- `/books/search` - Search books
-
-### Posts
-- `/posts/all` - List all blog posts
-- `/posts/add` - Create new post
-- `/posts/<id>` - View post
-- `/posts/update/<id>` - Edit post (owner only)
-- `/posts/delete/<id>` - Delete post (owner only)
-
----
-
-## Configuration
-
-### Database URI
-
-Edit `data_models.py` to change database:
-
-```python
-# SQLite (default)
-MYSQL_URI = f"sqlite:///{data_folder_root}/library.sqlite"
-
-# MySQL example
-MYSQL_URI = "mysql://username:password@localhost/library_db"
-```
-
-### Secret Key
-
-Change in `app.py` for production:
-
-```python
-app.config["SECRET_KEY"] = "your-secret-key-here"
-```
-
----
-
-## Database Migrations
-
-```bash
-# Initialize migrations
-flask db init
-
-# Create migration
-flask db migrate -m "Description of changes"
-
-# Apply migration
-flask db upgrade
-
-# Rollback migration
-flask db downgrade
-```
-
----
-
-## Forms (WTForms)
-
-### User Forms
-- Registration form with password confirmation
-- Login form with username/email
-- Profile update form
-
-### Book Forms
-- Add/edit book with ISBN, title, author selection
-- Publication year and condition fields
-- Cover URL upload
-
-### Post Forms
-- CKEditor-powered content field
-- Title and subtitle fields
-- CSRF protection enabled
-
----
-
-## Security Features
-
-- **Password Hashing**: Werkzeug's `generate_password_hash`
-- **CSRF Protection**: Flask-WTF automatic token generation
-- **Session Management**: Flask-Login secure sessions
-- **SQL Injection Prevention**: SQLAlchemy ORM parameterized queries
-- **Access Control**: Route decorators for authentication
-
----
-
-## Example Usage
-
-### Adding a Book (Code)
-
-```python
-from data_models import Book, db
-
-new_book = Book(
-    isbn="978-0-123456-78-9",
-    title="Python Programming",
-    publication_year=2024,
-    author_id=1,
-    user_id=1
-)
-db.session.add(new_book)
-db.session.commit()
-```
-
-### Querying with Relationships
-
-```python
-# Get all books by an author
-author = Author.query.get(1)
-author_books = author.books
-
-# Get user's books
-user = User.query.get(1)
-user_books = user.books
-```
-
----
-
-## Known Limitations
-
-- Single admin model (only User ID 1)
-- No file upload for book covers (URL only)
-- No multi-factor authentication
-- Basic search functionality (no full-text search)
-
----
-
-## Future Enhancements
-
-- Multi-admin support with permission levels
-- Book cover image upload and storage
-- Advanced search with filters
-- Book borrowing/lending system
-- Reading list and favorites
-- Export data to CSV/PDF
-- Email verification for registration
-
----
-
-## Acknowledgments
-
-Built following Flask and database relationship tutorials from [Codecademy](https://www.codecademy.com). Special thanks to instructors for comprehensive guidance on SQLAlchemy ORM and Flask best practices.
-
----
+- **Book update page crashes.** `BookForm.publication_year` is a `DateField` (`YYYY-MM-DD`, in `allwebforms.py`) but `Book.publication_year` is an integer column. The add form stores a date string such as `2000-01-01`, adding a bare year such as `1999` fails validation, and the update POST stores a bare year. Rendering a stored integer in the `DateField` then makes `GET /books/book/update/<id>/` return 500 with `'int' object has no attribute 'strftime'`. Books with no year load fine.
+- **Unhandled errors return 500.** Registering a username or email that already exists raises an unhandled `IntegrityError`. The update routes and the dashboard read `request.form` directly and skip form validation, so a missing field such as `about_user` raises `AttributeError`.
+- **Deleting a user orphans their records.** Their books and posts keep existing with the owner set to `NULL`, so only the admin can edit them afterwards.
+- **Admin is hard-coded.** The admin is whoever has user id 1, and on a fresh database that is the first person to register at `/users/add`.
+- **Migrations are not set up.** `Flask-Migrate` is initialised in `app.py`, but there is no `migrations/` folder. The schema comes only from `db.create_all()`.
+- **Misleading name.** `MYSQL_URI` in `data_models.py` holds a SQLite path. There is no MySQL support.
+- **Search crashes on bad input.** `POST /books/search` and `POST /posts/search` return 500 when the form is empty or fails validation, because the result variables are never assigned.
+- **Post search has no UI.** The only search form (in the navbar) posts to the book search. The posts search route exists but no page links to it.
+- **No tests.**
+- **Not for production.** `python app.py` uses Flask's development server.
 
 ## License
 
-MIT License - see root [LICENSE](../../LICENSE) file.
-
----
-
-## Author
-
-[@macraves](https://github.com/macraves)
+MIT, see [LICENSE](../../LICENSE).
