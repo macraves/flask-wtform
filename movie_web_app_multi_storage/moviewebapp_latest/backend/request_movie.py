@@ -3,7 +3,10 @@ import json
 import os
 
 import requests
+from dotenv import load_dotenv
 
+# Picks up OMDB_API_KEY from the nearest .env file in this or a parent folder
+load_dotenv()
 YOUR_API_KEY = os.environ.get("OMDB_API_KEY")
 BASE_URL = "http://www.omdbapi.com"
 
