@@ -1,7 +1,7 @@
 """Blogs related BluePrint"""
 
 from flask import Blueprint, flash, redirect, render_template, request, url_for, abort
-from json_post_management import JsonBlog, os
+from json_post_management import CorruptBlogFile, JsonBlog, os
 from post_forms import BlogForm
 
 script_base_dir = os.path.dirname(__file__)
@@ -73,20 +73,21 @@ def blog_update(idx: int):
         flash("Invalid Blog ID for update")
         abort(404, description="404 Blog Not Found")
     form = BlogForm()
-    if request.method == "POST":
+    if form.validate_on_submit():
         blog["author"] = form.author.data.strip().title()
         blog["title"] = form.title.data.strip().title()
         blog["content"] = form.content.data.strip().title()
         the_blogs.save_the_blog()
         flash("Form updated successfully")
         return redirect(url_for("blog.blogs_all"))
-    form.author.data = blog.get("author")
-    form.title.data = blog.get("title")
-    form.content.data = blog.get("content")
+    if request.method == "GET":
+        form.author.data = blog.get("author")
+        form.title.data = blog.get("title")
+        form.content.data = blog.get("content")
     return render_template("blog_update.html", page_name="Update Blog", form=form)
 
 
-@posts.route("/blogs/delete/<int:idx>")
+@posts.route("/blogs/delete/<int:idx>", methods=["POST"])
 def blog_delete(idx: int):
     """Only delete the blog by given ID"""
     the_blog = JsonBlog(file_path=FILE_PATH)
@@ -101,7 +102,7 @@ def blog_delete(idx: int):
     return redirect(url_for("blog.blogs_all"))
 
 
-@posts.route("/blogs/like/<int:idx>")
+@posts.route("/blogs/like/<int:idx>", methods=["POST"])
 def blog_like(idx: int):
     """Adds LIKE attribute to chosen blog dictionary"""
     the_blog = JsonBlog(file_path=FILE_PATH)
@@ -126,4 +127,10 @@ def page_not_found(error):
 @posts.errorhandler(500)
 def internal_server_error(error):
     """Handles internal server error"""
-    return render_template("500.html", message=error.description), 500
+    return render_template("errors.html", message="Internal Server Error"), 500
+
+
+@posts.errorhandler(CorruptBlogFile)
+def corrupt_blog_file(error):
+    """Handles a corrupt data file; the file is left untouched"""
+    return render_template("errors.html", message="Blog data file is corrupt"), 503

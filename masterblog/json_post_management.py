@@ -14,6 +14,10 @@ if not os.path.exists(folder_to_save):
     os.makedirs(folder_to_save)
 
 
+class CorruptBlogFile(Exception):
+    """Raised when saving would overwrite a corrupt or unreadable data file."""
+
+
 class JsonBlog:
     """This class represents a JSON-based blog management system.
 
@@ -22,6 +26,7 @@ class JsonBlog:
     Attributes:
         path (str): The path to the JSON file.
         blogs (list): A list of blog post dictionaries.
+        corrupt (bool): True if the file could not be read as a list of posts.
 
     """
 
@@ -39,7 +44,31 @@ class JsonBlog:
         if not os.path.exists(self.path):
             with open(self.path, "w", encoding="utf-8") as handle:
                 json.dump([], handle, indent=4)
+        self.corrupt = False
         self.blogs = self.read_blog_data()
+        self._next_id = self._load_next_id()
+
+    @property
+    def _counter_path(self):
+        """str: Path of the sidecar file that stores the next free ID."""
+        return self.path + ".next_id"
+
+    def _load_next_id(self):
+        """Work out the next free ID so deleted IDs are never reused.
+
+        Returns:
+            int: The larger of the stored counter and highest existing ID + 1.
+
+        """
+        next_id = 1
+        if self.blogs:
+            next_id = max(item.get("id") for item in self.blogs) + 1
+        try:
+            with open(self._counter_path, "r", encoding="utf-8") as handle:
+                next_id = max(next_id, int(handle.read().strip()))
+        except (OSError, ValueError):
+            pass
+        return next_id
 
     def _set_id(self):
         """Set the ID for a new blog post.
@@ -48,33 +77,42 @@ class JsonBlog:
             int: The ID for the new blog post.
 
         """
-        if self.blogs:
-            max_id = max(item.get("id") for item in self.blogs)
-            return max_id + 1
-        return 1
+        new_id = self._next_id
+        self._next_id += 1
+        return new_id
 
     def read_blog_data(self):
         """Read the blog data from the JSON file.
 
         Returns:
-            list: A list of blog post dictionaries.
+            list: A list of blog post dictionaries; empty (and ``corrupt`` is
+            set) if the file is missing, unreadable or not a list.
 
         """
         try:
             with open(self.path, "r", encoding="utf-8") as blog_data:
                 blogs = json.load(blog_data)
+            if not isinstance(blogs, list):
+                raise ValueError("blog data is not a list")
             return blogs
-        except FileNotFoundError:
-            print(f"{self.path} does not exist")
-            return None
-        except json.JSONDecodeError:
-            print("JSON Decoder error")
-            return None
+        except (OSError, ValueError):
+            print(f"{self.path} is missing or corrupt")
+            self.corrupt = True
+            return []
 
     def save_the_blog(self):
-        """Save the blog data to the JSON file."""
+        """Save the blog data to the JSON file.
+
+        Raises:
+            CorruptBlogFile: If the file was corrupt when read; it is not overwritten.
+
+        """
+        if self.corrupt:
+            raise CorruptBlogFile(f"{self.path} is corrupt; refusing to overwrite")
         with open(self.path, "w", encoding="utf-8") as handle:
             json.dump(self.blogs, handle, indent=4)
+        with open(self._counter_path, "w", encoding="utf-8") as handle:
+            handle.write(str(self._next_id))
 
     def append_to_blogs(self, data: dict):
         """Append a new blog post to the list of blogs.

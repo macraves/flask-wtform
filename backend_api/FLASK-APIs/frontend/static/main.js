@@ -27,8 +27,16 @@ function loadPosts() {
             data.forEach(post => {
                 const postDiv = document.createElement('div');
                 postDiv.className = 'post';
-                postDiv.innerHTML = `<h2>${post.title}</h2><p>${post.content}</p>
-                <button onclick="deletePost(${post.id})">Delete</button>`;
+                // Build the DOM with textContent so post data is never parsed as HTML
+                const title = document.createElement('h2');
+                title.textContent = post.title;
+                const content = document.createElement('p');
+                content.textContent = post.content;
+                const deleteButton = document.createElement('button');
+                deleteButton.textContent = 'Delete';
+                const postId = Number(post.id);
+                deleteButton.addEventListener('click', () => deletePost(postId));
+                postDiv.append(title, content, deleteButton);
                 postContainer.appendChild(postDiv);
             });
         })

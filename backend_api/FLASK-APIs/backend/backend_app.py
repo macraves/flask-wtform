@@ -30,7 +30,15 @@ app = Flask(__name__)
 
 # Set a rate limit for all routes (e.g., 10 requests per minute)
 # limiter.limit("10 per minute")(app)
-CORS(app)  # This will enable CORS for all routes
+# Only the bundled front end (and any origin in CORS_ORIGINS) may call the API.
+CORS_ORIGINS = [
+    origin.strip()
+    for origin in os.environ.get(
+        "CORS_ORIGINS", "http://127.0.0.1:5001,http://localhost:5001"
+    ).split(",")
+    if origin.strip()
+]
+CORS(app, origins=CORS_ORIGINS)
 
 POSTS = [
     {"id": 1, "title": "abcdef", "content": "zwyt."},
@@ -47,12 +55,32 @@ def global_posts(version):
 CHOSEN = 1.0
 VERSION = {"0": global_posts, "1.0": load_json, "1.1": load_json, "1.2": load_json}
 
-if CHOSEN == 1.0:
-    version_keys = ["id", "title", "content"]
-if CHOSEN == 1.1:
-    version_keys = ["id", "title", "content", "date"]
-if CHOSEN == 1.2:
-    version_keys = ["id", "title", "content", "date", "author"]
+VERSION_KEYS = {
+    0: ["id", "title", "content"],
+    1.0: ["id", "title", "content"],
+    1.1: ["id", "title", "content", "date"],
+    1.2: ["id", "title", "content", "date", "author"],
+}
+
+
+def current_keys():
+    """Return the post keys of the chosen version."""
+    return VERSION_KEYS[CHOSEN]
+
+
+def load_data():
+    """Return ``(data, persist)`` for the chosen version.
+
+    ``data`` is a dict with a ``posts`` list. ``persist`` is True when changes
+    must be written back to the JSON file (version 0 lives in memory only).
+    """
+    if CHOSEN == 0:
+        return {"version": 0, "posts": POSTS}, False
+    check_version(CHOSEN)
+    data = VERSION[str(CHOSEN)](CHOSEN)
+    if data is None:
+        raise CustomError("Post storage is unavailable", 500)
+    return data, True
 
 
 # Attention here !!!
@@ -102,23 +130,20 @@ def format_common_key_value(queries: dict, keys: list):
             try:
                 val = int(val)
             except ValueError as value_error:
-                raise CustomError(value_error, 400) from value_error
+                raise CustomError(f"Invalid id: {val!r}", 400) from value_error
         formatted[key] = val
     return formatted
 
 
-def sort_without_date(sort, posts, direction, exsits_params):
-    """Sort without date, default direction value is set (asc)."""
-    if sort == "date":
-        posts = titilized_post(posts)
-        posts = sorted(
-            posts,
-            key=lambda post: post[sort],
-            reverse=direction.get(
-                exsits_params.get("direcection", "asc").strip().lower()
-            ),
-        )
-    return posts
+def sort_without_date(sort, posts, direction, exists_params):
+    """Sort posts by a non-date key, default direction is asc."""
+    if sort not in current_keys():
+        raise CustomError(f"Invalid sort key: {sort!r}", 400)
+    return sorted(
+        posts,
+        key=lambda post: post.get(sort, ""),
+        reverse=direction.get(exists_params.get("direction", "asc").strip().lower()),
+    )
 
 
 def sort_with_date(sort, posts, direction, exists_params):
@@ -127,12 +152,18 @@ def sort_with_date(sort, posts, direction, exists_params):
     Date strings are converted to datetime objects, because string dates
     can not be sorted accurately. Default direction value is set (asc).
     """
-    posts = sorted(
-        posts,
-        key=lambda post: datetime.strptime(post[sort], "%Y-%m-%d"),
-        reverse=direction.get(exists_params.get("direction", "asc").strip().lower()),
-    )
-    return posts
+    if "date" not in current_keys():
+        raise CustomError("Sorting by date needs version 1.1 or higher", 400)
+    try:
+        return sorted(
+            posts,
+            key=lambda post: datetime.strptime(post[sort], "%Y-%m-%d"),
+            reverse=direction.get(
+                exists_params.get("direction", "asc").strip().lower()
+            ),
+        )
+    except (KeyError, ValueError) as error:
+        raise CustomError("A post has a missing or malformed date", 400) from error
 
 
 @app.route("/api/posts", methods=["GET"])
@@ -143,15 +174,10 @@ def get_posts():
     It represents how to do version control; the version variable is not
     strictly necessary but it gives the general idea.
     """
-    version = CHOSEN
-    if version == 0:
-        posts = VERSION[str(version)](version)
-    if version >= 1.0:
-        check_version(version)
-        data = VERSION[str(version)](version)
-        posts = data["posts"]
-        # posts string values needs to match with request args values
-        posts = titilized_post(posts)
+    data, _ = load_data()
+    # posts string values needs to match with request args values
+    posts = titilized_post(data["posts"])
+    version_keys = current_keys()
 
     page = request.args.get("page", default=1, type=int)
     limit = request.args.get("limit", default=10, type=int)
@@ -197,12 +223,9 @@ def get_posts():
 @app.route("/api/posts/search", methods=["GET"])
 def search_posts():
     """Search posts by title or content."""
-    if CHOSEN == 0:
-        posts = VERSION[str(CHOSEN)]
-    if CHOSEN >= 1.0:
-        data = VERSION[str(CHOSEN)](CHOSEN)
-        posts = data["posts"]
-        posts = titilized_post(posts)
+    data, _ = load_data()
+    posts = titilized_post(data["posts"])
+    version_keys = current_keys()
     queries = {**request.args}
 
     queries = format_common_key_value(queries, version_keys)
@@ -228,14 +251,8 @@ def search_posts():
 @app.route("/api/posts", methods=["POST"])
 def handle_posts():
     """Add a new post if post is valid."""
-    if CHOSEN == 0:
-        posts = VERSION[str(CHOSEN)]
-        flag = False
-    if CHOSEN >= 1.0:
-        flag = True
-        data = VERSION[str(CHOSEN)](CHOSEN)
-        posts = data["posts"]
-        posts = titilized_post(posts)
+    data, flag = load_data()
+    posts = titilized_post(data["posts"])
     received_data = request.get_json()
 
     post = add_post(received_data, data)
@@ -251,15 +268,8 @@ def handle_posts():
 @app.route("/api/posts/<int:post_id>", methods=["DELETE"])
 def delete_post(post_id):
     """Delete post by id."""
-    if CHOSEN == 0:
-        posts = VERSION[str(CHOSEN)]
-        flag = False
-
-    if CHOSEN >= 1.0:
-        flag = True
-        data = VERSION[str(CHOSEN)](CHOSEN)
-        posts = data["posts"]
-        posts = titilized_post(posts)
+    data, flag = load_data()
+    posts = titilized_post(data["posts"])
     post = next((post for post in posts if post["id"] == post_id), None)
     if post:
         data["posts"].remove(post)
@@ -272,14 +282,8 @@ def delete_post(post_id):
 @app.route("/api/posts/<int:post_id>", methods=["PUT"])
 def update_post(post_id):
     """Update post by id."""
-    if CHOSEN == 0:
-        posts = VERSION[str(CHOSEN)]
-        flag = False
-    if CHOSEN >= 1.0:
-        data = VERSION[str(CHOSEN)](CHOSEN)
-        flag = True
-        posts = data["posts"]
-        posts = titilized_post(posts)
+    data, flag = load_data()
+    posts = titilized_post(data["posts"])
     received_post = request.get_json()
     valid_post = validate_post(received_post, data)
     if valid_post is None:
@@ -300,7 +304,7 @@ def update_post(post_id):
 def handle_custom_error(error):
     """Custom error handler."""
     response = {
-        "message": error.message,
+        "message": str(error.message),
         "status_code": error.status_code,
     }
     return jsonify(response), error.status_code

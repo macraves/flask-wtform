@@ -9,7 +9,7 @@ authentication, and it is not meant for production use.
 - Add, list, view, update and delete blog posts
 - Like a post (a counter stored on the post)
 - Posts stored in `data/blogs.json`: the `data/` folder is created at start-up and the file the first time a post route is used
-- Forms built with Flask-WTF (CSRF token on the add form)
+- Forms built with Flask-WTF; CSRF protection is on for every POST
 - Routes kept in a Flask blueprint (`blogs_routes.py`)
 
 ## Quick start
@@ -56,8 +56,8 @@ python app.py
 | `/blogs`                 | GET       | List all posts                           |
 | `/blogs/<int:idx>`        | GET       | Show one post                            |
 | `/blogs/update/<int:idx>` | GET, POST | Edit a post                              |
-| `/blogs/delete/<int:idx>` | GET       | Delete a post, then redirect to the list |
-| `/blogs/like/<int:idx>`   | GET       | Increment the like counter               |
+| `/blogs/delete/<int:idx>` | POST      | Delete a post, then redirect to the list |
+| `/blogs/like/<int:idx>`   | POST      | Increment the like counter               |
 
 An unknown post id returns a 404 page rendered from `templates/errors.html`.
 
@@ -78,10 +78,8 @@ masterblog/
 
 ## Data and code notes
 
-- `BlogForm` has `author`, `title`, `content` (a `CKEditorField`) and `submit`.
-  The first three are `DataRequired`. `CKEditor(app)` is never initialised, so
-  the editor script is not loaded and content is a plain textarea with the
-  `ckeditor` CSS class.
+- `BlogForm` has `author`, `title`, `content` (a plain `TextAreaField`) and `submit`.
+  The first three are `DataRequired`. CKEditor is not used.
 - `JsonBlog` has `read_blog_data()`, `append_to_blogs(data)` and
   `save_the_blog()`. The posts are in its `blogs` list. There are no
   `load_blogs`, `update_blog` or `delete_blog` methods; the routes edit the list
@@ -94,33 +92,22 @@ masterblog/
 
 ## Requirements and front end
 
-`requirements.txt` lists the packages the code imports: Flask, Flask-WTF,
-Flask-CKEditor and WTForms, plus Werkzeug, pinned (it also comes in as a Flask
-dependency).
+`requirements.txt` lists the packages the code imports: Flask, Flask-WTF
+and WTForms, plus Werkzeug, pinned (it also comes in as a Flask dependency).
 Bootstrap 5.3.3 is loaded from the jsDelivr CDN in `templates/base.html`, so the
 pages need internet access to look right.
 
 ## Known limitations
 
-- Delete and like are plain GET links. Delete has no confirmation. The like
-  route renders the post page directly instead of redirecting, so refreshing the
-  page after a like adds another like.
-- The update route does not call `validate_on_submit()`, so it does no form
-  validation and does not check the CSRF token. Empty values were saved in a
-  test. It also title-cases the content (`<b>World</b>` became `<B>World</B>`).
-- New ids are the highest id plus one, so an id can be reused after the last
-  post is deleted.
-- If `blogs.json` is corrupt, `read_blog_data()` returns `None`. `/`, `/blog_add`
-  (GET) and the list page still load (the list shows "No blogs entry"), but
-  showing, updating, deleting or liking a post and submitting a new post all fail
-  with an error, which then hits the broken 500 handler below.
-- The 500 error handler renders `500.html`, which does not exist, so the
-  handler itself raises `TemplateNotFound`.
+- Delete has no confirmation. The like route renders the post page directly
+  instead of redirecting, so refreshing the page after a like re-submits it.
+- The update route title-cases the content (`<b>World</b>` became `<B>World</B>`).
+- If `blogs.json` is corrupt, pages show it as empty, saving returns a 503 page
+  and the file is never overwritten. Ids come from a `blogs.json.next_id`
+  counter file next to the data file, so deleted ids are not reused.
 - The 404 handler is registered on the blueprint, so URLs outside it get
   Flask's default 404 page.
-- `base.html` renders flash messages with `| safe`. Current messages are fixed
-  strings, but it would be unsafe with user-supplied text.
-- No tests.
+- Tests: `python -m pytest masterblog/tests` (they use a temporary data file).
 
 ## License
 
