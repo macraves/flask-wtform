@@ -77,7 +77,13 @@ class MovieApp():
             raise AppError("Movie year is missing")
         if not movie_data["imdbRating"]:
             raise AppError("Movie rating is missing")
-        movie_data["imdbRating"] = float(movie_data["imdbRating"])
+        try:
+            movie_data["imdbRating"] = float(movie_data["imdbRating"])
+        except (TypeError, ValueError) as error:
+            # OMDb sends "N/A" for movies without a rating
+            raise AppError(
+                f"Movie rating is not available: {movie_data['imdbRating']}"
+            ) from error
         return movie_data
 
     @staticmethod
@@ -279,7 +285,7 @@ class UserShell:
 def get_name_and_password():
     """Takes user name and password."""
     user_name = io.read_text("Please Enter your name: ")
-    user_password = io.read_text("Please enter your password: ")
+    user_password = io.read_password("Please enter your password: ")
     user_data = {
         "username": user_name,
         "password": user_password

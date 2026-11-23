@@ -65,10 +65,13 @@ After sign-in the program loops on this menu until you choose 8:
 ```
 
 - Add asks for a title, looks it up on OMDb and stores title, year, imdbRating
-  and poster. Titles are stored title-cased; duplicates are rejected.
+  and poster. Titles are stored title-cased; duplicates are rejected. A movie
+  whose rating OMDb reports as `N/A` is rejected with
+  `Movie rating is not available: N/A`.
 - Delete asks for a title. Update asks for a title and a new rating (a number).
-- Sort asks for `asc` or `desc` (lower case only, see Known limitations) and orders by rating.
-- Stat prints only the maximum, minimum and average rating.
+- Sort asks for `asc` or `desc` (any case) and orders by rating.
+- Stat prints only the maximum, minimum and average rating; on an empty
+  collection it reports `No movies in database`.
 - Generate User Webpage writes an HTML page for the signed-in user.
 - Errors raised as `AppError`, `StorageError` or `FunctionErrors` are printed
   and the menu continues.
@@ -98,19 +101,21 @@ title; CSV files have the header `Title,Year,imdbRating,Poster`.
   `FunctionErrors`.
 - `ioput.py`: input helpers that re-prompt on invalid entries.
 
+## Tests
+
+```powershell
+pip install pytest
+python -m pytest tests -q
+```
+
+The tests use temporary folders and mocked OMDb, `input` and `getpass`; they
+never touch `registry/`, `STORAGE/` or the real API.
+
 ## Known limitations
 
-- The password is read with `input()`, so it is echoed on screen.
-- There are no tests.
-- Titles and poster URLs from OMDb are inserted into the generated HTML without
-  escaping, and the poster is written as an unquoted `src=` value.
-- If OMDb returns `N/A` as the rating, Add fails in `format_movie_data`
-  (`float('N/A')`) with an uncaught `ValueError` and the program exits with a
-  traceback. I tested this with a mocked response, not the real API.
-- Stat on an empty collection also ends in an uncaught `ValueError`.
-- Sort accepts `ASC` or `Desc` in its validity check but then indexes with the
-  raw input, so anything but lower-case `asc` or `desc` raises an uncaught
-  `KeyError` and exits.
+- The `N/A` rating fix was tested with a mocked OMDb response, not the real API.
+- Poster values are HTML-escaped and quoted but not checked for a URL scheme or
+  for OMDb's `N/A` placeholder.
 
 ## License
 

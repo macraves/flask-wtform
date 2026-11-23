@@ -1,5 +1,7 @@
 '''Ignore user Invalid ENTRy'''
 
+import getpass
+
 import requests
 
 
@@ -24,6 +26,22 @@ def read_text(prompt):
             else:  # break out of loop
                 return result
         except KeyboardInterrupt:  # if we get here user entered Ctrl + C
+            print('Do interrupt the process')
+
+
+def read_password(prompt):
+    '''Display a prompt and read a password without echoing it
+    Keyboard Interrupts (Ctrl + C) are ignored
+    Empty entries are rejected
+    returns the password string entered by user '''
+    while True:
+        try:
+            result = getpass.getpass(prompt)
+            if result == '':
+                print('Please do not leave empty')
+            else:
+                return result
+        except KeyboardInterrupt:
             print('Do interrupt the process')
 
 
