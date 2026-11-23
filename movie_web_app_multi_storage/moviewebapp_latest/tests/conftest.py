@@ -72,6 +72,16 @@ def clean_data():
     with frontend_app.app.app_context():
         db.drop_all()
         db.create_all()
+        # Close pooled connections before the rmtree below: on Linux, deleting
+        # the .db file under an open connection leaves it read-only ("attempt
+        # to write a readonly database"); on Windows the delete is refused and
+        # silently skipped.
+        db.session.remove()
+        db.engine.dispose()
+    with backend_api.app.app_context():
+        # The API app has its own engine to the same file; close it too.
+        db.session.remove()
+        db.engine.dispose()
     shutil.rmtree(DataManagmentInterface.logs_dir, ignore_errors=True)
     shutil.rmtree(User.registry_dir, ignore_errors=True)
     os.makedirs(DataManagmentInterface.logs_dir, exist_ok=True)
