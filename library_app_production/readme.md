@@ -160,7 +160,7 @@ pip install -r requirements-dev.txt
 python -m pytest
 ```
 
-84 tests ran and passed on Python 3.12.6 and on 3.14.2. They use a temporary SQLite file and a test secret key, mock all network calls, and need no `.env`. They cover authorization (owner, other user, admin, anonymous), CSRF and method rules, HTML sanitising and escaping, rendering of every page, and one regression test per bug fixed. The tests were written alongside the fixes, so they were not run against the old code to show them failing first. GitHub Actions runs the same command on Python 3.12 (`.github/workflows/tests.yml` at the repository root).
+88 tests passed on Python 3.14.2 (the earlier 84 also passed on 3.12.6; the 4 added for wildcard search were not run on 3.12 locally, CI runs 3.12). They use a temporary SQLite file and a test secret key, mock all network calls, and need no `.env`. They cover authorization (owner, other user, admin, anonymous), CSRF and method rules, HTML sanitising and escaping, rendering of every page, and one regression test per bug fixed. The tests were written alongside the fixes, so they were not run against the old code to show them failing first. GitHub Actions runs the same command on Python 3.12 (`.github/workflows/tests.yml` at the repository root).
 
 ## Known limitations
 
@@ -171,11 +171,8 @@ These were checked in the code. Where a limitation says "confirmed", I reproduce
 - **No database driver for PostgreSQL or MySQL** in `requirements.txt`, although `main.py` rewrites `postgres://` to `postgresql://`. Only SQLite was run.
 - **Legacy date-string years.** Rows written by an earlier version may hold a date string in `publication_year`. They display and update fine, but the column is typed as an integer and SQLite does not enforce that.
 - **Posts are sanitised when rendered, not when stored.** Raw HTML is kept in the database.
-- **Search treats `%` and `_` as wildcards** because the term is passed to `LIKE` unescaped (read from the code).
 - **No password change or reset.** The dashboard and update forms do not touch the password (read from the code).
-- **Unused exception classes.** `BookError`, `PostError`, `AuthorError` and `UserError` are caught in the routes but never raised.
 - **Python versions.** SQLAlchemy 2.0.31 is the lowest 2.0 release that imports on Python 3.14 (2.0.30 and older failed; checked by installing each). The sibling project `db_app_api/library_app` still pins an older SQLAlchemy and does not import on 3.14.
-- **Test warnings.** Flask-SQLAlchemy's `get_or_404` calls the legacy `Query.get`, which emits a deprecation warning in the tests.
 
 ## License
 

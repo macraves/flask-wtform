@@ -11,18 +11,6 @@ from data_models import db, Author, Book, Post, User
 user_bp = Blueprint("user", __name__, url_prefix="/users", template_folder="templates")
 
 
-class UserError(Exception):
-    """User error."""
-
-    def __init__(self, message):
-        """Store the error message.
-
-        Args:
-            message (str): Error description.
-        """
-        self.message = message
-
-
 def find_conflict(username, email, exclude_id=None):
     """Find an existing account that already uses a username or email.
 
@@ -116,7 +104,7 @@ def login():
 def dashboard():
     """Dashboard route for the users."""
     user_id = current_user.id
-    user = User.query.get_or_404(user_id)
+    user = db.get_or_404(User, user_id)
     if current_user.id != user.id:
         flash("You can only update your own account")
         return redirect("/users")
@@ -148,7 +136,7 @@ def logout():
 @user_bp.route("get_user/<int:user_id>/")
 def get_user(user_id):
     """Get user."""
-    user = User.query.get_or_404(user_id)
+    user = db.get_or_404(User, user_id)
     if user is None:
         flash("User not found")
         return redirect("/users")
@@ -198,7 +186,7 @@ def user_add():
 @login_required
 def user_update(user_id):
     """Update user."""
-    user = User.query.get_or_404(user_id)
+    user = db.get_or_404(User, user_id)
     if not can_modify(user.id):
         flash("You can only change your own account")
         return redirect(url_for("user.users_all"))
@@ -221,7 +209,7 @@ def user_update(user_id):
 @login_required
 def user_delete(user_id):
     """Delete user."""
-    user = User.query.get_or_404(user_id)
+    user = db.get_or_404(User, user_id)
     if not can_modify(user.id):
         flash("You can only delete your own account")
         return redirect(url_for("user.users_all"))
@@ -231,11 +219,8 @@ def user_delete(user_id):
     if user.is_admin and User.query.filter_by(is_admin=True).count() == 1:
         flash("The last admin account cannot be deleted")
         return redirect(url_for("user.users_all"))
-    try:
-        # Cascades to the books and posts the user owns
-        db.session.delete(user)
-        db.session.commit()
-        flash(Markup("<strong>{}</strong> has been deleted").format(user.username))
-    except UserError:
-        flash("Operation failed during the delete process")
+    # Cascades to the books and posts the user owns
+    db.session.delete(user)
+    db.session.commit()
+    flash(Markup("<strong>{}</strong> has been deleted").format(user.username))
     return redirect("/users")

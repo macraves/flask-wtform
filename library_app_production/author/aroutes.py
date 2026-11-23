@@ -12,18 +12,6 @@ author_bp = Blueprint(
 )
 
 
-class AuthorError(Exception):
-    """Author error."""
-
-    def __init__(self, message):
-        """Store the error message.
-
-        Args:
-            message (str): Error description.
-        """
-        self.message = message
-
-
 def reset_author_form(form):
     """Reset pos form."""
     form.name.data = ""
@@ -34,7 +22,7 @@ def reset_author_form(form):
 @author_bp.route("/get_author/<int:author_id>/")
 def get_author(author_id):
     """Get author by id."""
-    author = Author.query.get_or_404(author_id)
+    author = db.get_or_404(Author, author_id)
     return render_template("get_author.html", author=author, author_id=author_id)
 
 
@@ -81,19 +69,16 @@ def author_update(author_id):
     if not is_admin():
         flash("Only the admin can update authors")
         return redirect(url_for("author.authors_all"))
-    author = Author.query.get_or_404(author_id)
+    author = db.get_or_404(Author, author_id)
     if author is None:
         flash("Author not found")
         return redirect("/")
     form = AuthorForm(obj=author)
     if form.validate_on_submit():
         form.populate_obj(author)
-        try:
-            db.session.commit()
-            flash(f"Author ID: {author.id} has been updated")
-            return redirect(url_for("author.authors_all"))
-        except AuthorError:
-            flash("Operation failed during the update process")
+        db.session.commit()
+        flash(f"Author ID: {author.id} has been updated")
+        return redirect(url_for("author.authors_all"))
     else:
         # Display form errors
         for field, errors in form.errors.items():
@@ -121,7 +106,7 @@ def authors_all():
 def author_delete(author_id):
     """Delete author, Only authorized user can delete author."""
     if is_admin():
-        author = Author.query.get_or_404(author_id)
+        author = db.get_or_404(Author, author_id)
         if author is None:
             flash("author not found")
             return redirect(url_for("user.admin"))
@@ -134,9 +119,6 @@ def author_delete(author_id):
             Markup("<strong>author ID: {}</strong> and associated books have been deleted").format(author.id)
         )
         # then author
-        try:
-            db.session.delete(author)
-            db.session.commit()
-        except AuthorError:
-            flash("Operation failed during the delete author")
+        db.session.delete(author)
+        db.session.commit()
     return redirect(url_for("user.admin"))
