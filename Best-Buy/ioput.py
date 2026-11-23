@@ -1,7 +1,5 @@
 """Ignore user Invalid ENTRY."""
 
-import requests
-
 
 class MinMaxRange(Exception):
     """Custom Error"""
@@ -126,14 +124,3 @@ def ask_to_continue(prompt):
     """Save time every time ask a continue"""
     ask = input(prompt)
     return "y" in ask.lower()
-
-
-def page_request(url):
-    """Error Handled Requests"""
-    try:
-        result = requests.get(url, timeout=10)
-        result.raise_for_status()
-        return result
-    except requests.exceptions.RequestException as exc:
-        print(f"Error requesting page {url}: {exc}")
-        return None

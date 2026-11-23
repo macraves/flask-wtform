@@ -10,12 +10,11 @@ The program starts with a hard-coded in-memory inventory (six products) and show
 
 ## Run it
 
-Requires Python 3 and, on a clean machine, the `requests` package (see Known limitations). From the `Best-Buy` folder, in PowerShell:
+Requires Python 3 and nothing else: the code uses only the standard library. From the `Best-Buy` folder, in PowerShell:
 
 ```powershell
 python -m venv .venv
 .venv\Scripts\Activate.ps1
-pip install requests
 python main.py
 ```
 
@@ -74,12 +73,11 @@ Best-Buy/
   unittest_products.py   tests
   unittest_store.py      tests
   product_unittest.py    tests
-  requirements.txt       comments only, no packages listed (its comment that no external dependencies are needed is wrong, see Known limitations)
+  requirements.txt       comments only: no external dependencies
 ```
 
 ## Known limitations
 
-- `ioput.py` imports `requests` for `page_request`, which nothing calls. `requirements.txt` lists no packages, so a clean machine needs `pip install requests` or `main.py` fails on import.
 - `Product.buy` only sets `active = False` on the non-promotion path (`products.py`), and `LimitedProducts.buy` never does. Listings are unaffected, because `Store.get_all_products` filters on `quantity > 0`, not on the `active` flag.
 - Option 8 prints the cost of the last successfully bought item as the order total (`main.py`, `ORDER MADE, TOTAL`), not the sum of the whole order.
 - Option 8 crashes with a traceback in two cases: a product number outside the list raises `IndexError` (`main.py`), and ordering more than a `LimitedProducts` item allows raises `TypeError`, because `LimitedProducts.buy` returns `None` when the quantity check fails.

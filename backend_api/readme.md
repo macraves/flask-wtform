@@ -56,7 +56,7 @@ python frontend_app.py
 
 Then open <http://127.0.0.1:5001>.
 
-`flask flask-cors faker` are the packages the code uses. `pip install -r requirements.txt` also works but installs unneeded packages, see "Known limitations".
+`flask flask-cors faker` are the packages the code uses, and `requirements.txt` lists exactly those three (unpinned).
 
 If `STORAGE/posts.json` does not exist, the backend creates it with an empty post list on the first request.
 
@@ -118,7 +118,6 @@ Each of these was checked by running the code on a copy, through the Flask test 
 - Responses to POST, PUT and DELETE return a list of posts (the first 20), read before the change, so it does not show the new state.
 - PUT replaces the whole post (and moves it to the end of the file); fields not sent are not kept. In 1.2 `date` and `author` are refilled with defaults. In 1.1 a PUT drops `date`, and any post without a `date` makes `sort=date` return 500 (`KeyError`).
 - Version 0 is broken: with `CHOSEN = 0` the `version_keys` variable is never defined (GET and search) and `data` is unbound (POST, PUT, DELETE), so every endpoint returns 500.
-- `requirements.txt` lists `logging`. `pip install -r requirements.txt` succeeds but installs an unrelated old PyPI package of that name (it took over two minutes here); the standard-library `logging` is still what the code imports. `Flask-Limiter` installs too, but all the limiter code is commented out in `backend_app.py` (see `FLASK-APIs/Limiter_error.txt`), so there is no rate limiting.
 - The frontend loads posts on start-up only if a base URL is already stored in the browser's `localStorage`, so the first visit shows nothing until you trigger the load. It writes post titles and content into the page with `innerHTML` (`static/main.js`), which is an XSS risk. CORS is open to all origins.
 - `create_doc.py` is not a documentation generator. It writes SSR and CSR Flask template snippets into `samples/template.json` next to the script.
 - The frontend has no edit/update; its script only fetches, posts and deletes.

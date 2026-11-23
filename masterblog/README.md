@@ -94,10 +94,9 @@ masterblog/
 
 ## Requirements and front end
 
-`requirements.txt` pins several packages the code does not import (for example
-Flask-Login, Flask-Migrate, Flask-SQLAlchemy, SQLAlchemy, alembic, Requests).
-The code itself imports Flask, Flask-WTF, Flask-CKEditor and WTForms (Werkzeug
-comes in as a Flask dependency).
+`requirements.txt` lists the packages the code imports: Flask, Flask-WTF,
+Flask-CKEditor and WTForms, plus Werkzeug, pinned (it also comes in as a Flask
+dependency).
 Bootstrap 5.3.3 is loaded from the jsDelivr CDN in `templates/base.html`, so the
 pages need internet access to look right.
 

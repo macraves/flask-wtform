@@ -13,15 +13,12 @@ All commands below are PowerShell and are run from `moviewebapp_latest/` unless 
 
 ## Setup
 
-Python 3 is required. I did not pin a Python version; the app was exercised here on a current Python 3 with the package versions pip resolved on the day (Flask 3.1, Flask-SQLAlchemy 3.1, SQLAlchemy 2.1, pandas 3.1).
-
-`requirements.txt` is incomplete. It lists only `flask`, `requests` and `python-dotenv==1.0.1`. From a fresh virtual environment with only that file installed, importing the app fails first on `flask_migrate`; `flask_login`, `flask_wtf`, `wtforms`, `flask_sqlalchemy` and `pandas` are missing as well (`werkzeug` arrives with Flask). The frontend and the API both start once these are installed:
+`requirements.txt` pins every package the code imports (pandas is only needed by `moviewebapp_latest`, for CSV storage). I installed it into a fresh Python 3.12 virtual environment and confirmed that `moviewebapp_latest` (frontend and API) and `using session` (frontend) import without errors; I did not run the servers for this check.
 
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install -r ..\requirements.txt
-pip install flask-login flask-wtf flask-sqlalchemy flask-migrate pandas
 ```
 
 Copy `../.env.example` to `.env` in the project folder (`movie_web_app_multi_storage/`) and fill it in. The code loads `.env` with python-dotenv.
@@ -111,7 +108,6 @@ There are no automated tests. `test_backend.py` is an interactive menu script fo
 
 ## Known limitations
 
-- `requirements.txt` is missing `flask-login`, `flask-wtf`, `flask-sqlalchemy`, `flask-migrate` and `pandas` (see Setup).
 - Reviews work only with SQLite storage, and the review pages currently fail: the review form page (`add_review.html`) and `SqliteStorage.add_review` both use `movie.adder`, but the `Movie` model has no such attribute (its backref is `user`), so both GET and POST of `/add_review/movie/<id>` return HTTP 500. `/add_review/...` with no session also returns 500 (`KeyError`) instead of redirecting. `/all-reviews` returns 500 for a signed-in JSON or CSV user.
 - The navbar search box is a form with no `action` and no backend route.
 - Deleting a movie is a GET link.
