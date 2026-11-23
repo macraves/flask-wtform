@@ -1,8 +1,19 @@
 """Frontend html template rendering."""
 import os
 import secrets
+import warnings
 
-from flask import Flask, flash, render_template, request, session, redirect, url_for
+from dotenv import load_dotenv
+from flask import (
+    Flask,
+    abort,
+    flash,
+    render_template,
+    request,
+    session,
+    redirect,
+    url_for,
+)
 from flask_migrate import Migrate
 from frontend.movie_wtf import UserForm, MovieForm, MovieUpdateForm, SigninForm
 from datamanagement.json_data_manager import JsonStorage, JsonStorageErrors
@@ -16,8 +27,13 @@ FILE_NAME = "movies"
 SQLITE_STORAGE = SqliteStorage(FILE_NAME)
 SQLITE_STORAGE_PATH = SQLITE_STORAGE.filename
 
+load_dotenv()
+
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
+app.secret_key = os.environ.get("SECRET_KEY")
+if not app.secret_key:
+    warnings.warn("SECRET_KEY is not set; using a random key, sessions reset on restart.")
+    app.secret_key = secrets.token_hex(32)
 app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{SQLITE_STORAGE_PATH}"
 
 db.init_app(app)
@@ -81,6 +97,22 @@ def get_storage_class(storage_text):
     return storage
 
 
+def require_session_owner(user_id):
+    """Abort 401 when nobody is signed in, 403 when user_id is another user's.
+
+    Args:
+        user_id (int): Owner id taken from the URL.
+
+    Raises:
+        HTTPException: 401 when signed out, 403 for another user's id.
+    """
+    user = session.get("user")
+    if not user or user.get("id") is None:
+        abort(401, description="Sign in first")
+    if str(user.get("id")) != str(user_id):
+        abort(403, description="You are not allowed")
+
+
 def get_user_and_storage():
     """Session object user and storage key values."""
     user = session.get("user")
@@ -97,7 +129,6 @@ def assign_session_values(data):
         "username": data.get("username"),
         "email": data.get("email"),
         "storage": data.get("storage"),
-        "password": data.get("password"),
     }
 
 
@@ -237,6 +268,7 @@ def add_movie():
 @app.route("/users/<int:user_id>/update_movie/<int:movie_id>", methods=["GET", "POST"])
 def update_movie(user_id, movie_id):
     """Render the update movie page."""
+    require_session_owner(user_id)
     _, storage = get_user_and_storage()
     movie = storage.get_target_movie(user_id, movie_id)
     form = MovieUpdateForm()
@@ -252,6 +284,7 @@ def update_movie(user_id, movie_id):
 @app.route("/users/<int:user_id>/delete_movie/<int:movie_id>")
 def delete_movie(user_id, movie_id):
     """Delete the selected movie from the user's list of favorite movies."""
+    require_session_owner(user_id)
     _, storage = get_user_and_storage()
     try:
         message = storage.delete_movie_from_user_list(user_id, movie_id)

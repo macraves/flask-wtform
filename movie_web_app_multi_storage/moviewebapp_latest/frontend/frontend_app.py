@@ -1,7 +1,9 @@
 """Frontend html template rendering."""
 import os
 import secrets
+import warnings
 
+from dotenv import load_dotenv
 from flask import abort, Flask, flash, render_template, redirect, request, url_for
 from flask_migrate import Migrate
 from flask_login import (
@@ -24,8 +26,13 @@ from frontend.movie_wtf import (
 )
 
 
+load_dotenv()
+
 app = Flask(__name__)
-app.secret_key = os.environ.get("SECRET_KEY") or secrets.token_hex(32)
+app.secret_key = os.environ.get("SECRET_KEY")
+if not app.secret_key:
+    warnings.warn("SECRET_KEY is not set; using a random key, sessions reset on restart.")
+    app.secret_key = secrets.token_hex(32)
 app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{ffasm.SQLITE_STORAGE_PATH}"
 
 db.init_app(app)
@@ -38,6 +45,19 @@ migrate = Migrate(app, db)
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "signin"
+
+
+def require_owner(user_id):
+    """Abort with 403 unless the logged-in user owns the given user_id.
+
+    Args:
+        user_id (int): Owner id taken from the URL.
+
+    Raises:
+        HTTPException: 403 when another user's id is requested.
+    """
+    if str(current_user.id) != str(user_id):
+        abort(403, description="You are not allowed")
 
 
 def check_html_state(form):
@@ -232,6 +252,7 @@ def user_movies(user_id):
 @login_required
 def user_update(user_id):
     """Find user by given user_id to update its info."""
+    require_owner(user_id)
     _, storage = ffasm.get_user_and_storage()
     form = UserUpdateForm()
     user = storage.find_user(user_id=user_id)
@@ -252,6 +273,7 @@ def user_update(user_id):
 @login_required
 def user_delete(user_id):
     """Find user by given user_id to delete its info."""
+    require_owner(user_id)
     form = UserUpdateForm()
     _, storage = ffasm.get_user_and_storage()
     # Neccassary label taken from form so validate_on_submit would not work
@@ -279,6 +301,7 @@ def list_users():
 @login_required
 def update_movie(user_id, movie_id):
     """Render the update movie page."""
+    require_owner(user_id)
     _, storage = ffasm.get_user_and_storage()
     movie = storage.get_target_movie(user_id, movie_id)
     form = MovieUpdateForm()
@@ -295,10 +318,7 @@ def update_movie(user_id, movie_id):
 @login_required
 def delete_movie(user_id, movie_id):
     """Delete the selected movie from the user's list of favorite movies."""
-    if str(current_user.id) != str(user_id):
-        return render_template(
-            "index.html", title="WARNING!", warning="You are not allowed"
-        )
+    require_owner(user_id)
     _, storage = ffasm.get_user_and_storage()
     try:
         message = storage.delete_movie_from_user_list(user_id, movie_id)

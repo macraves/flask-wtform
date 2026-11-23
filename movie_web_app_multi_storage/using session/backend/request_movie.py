@@ -1,6 +1,7 @@
 """Request movie data from the OMDb API."""
 import json
 import os
+from urllib.parse import urlencode
 
 import requests
 from dotenv import load_dotenv
@@ -8,7 +9,7 @@ from dotenv import load_dotenv
 # Picks up OMDB_API_KEY from the nearest .env file in this or a parent folder
 load_dotenv()
 YOUR_API_KEY = os.environ.get("OMDB_API_KEY")
-BASE_URL = "http://www.omdbapi.com"
+BASE_URL = "https://www.omdbapi.com"
 
 
 class RequestErrors(Exception):
@@ -38,7 +39,7 @@ def get_name_method_requests(method_name: str, movie_name: str) -> str:
     """
     if not YOUR_API_KEY:
         raise RequestErrors("OMDB_API_KEY environment variable is not set")
-    method_api = {"name": f"{BASE_URL}/?t={movie_name}&apikey={YOUR_API_KEY}"}
+    method_api = {"name": f"{BASE_URL}/?{urlencode({'t': movie_name, 'apikey': YOUR_API_KEY})}"}
     if method_name in method_api:
         return method_api[method_name]
     return None
