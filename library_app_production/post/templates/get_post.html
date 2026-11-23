@@ -1,4 +1,4 @@
-{% extends 'base.html' %}{% block content %}
+{% extends 'base.html' %}{% from "_macros.html" import delete_button, delete_submit %}{% block content %}
 <h1>Adding New Post</h1>
 <div class="shadow p-3 mb-5 bg-body-tertiary rounded col-8">
 	<form method="POST">
@@ -6,7 +6,7 @@
 		<div>{{ post.title }}</div>
 		<div>{{ post.subtitle }}</div>
 		<div>{{ post.added_date }}</div>
-		<div>{{ post.content | safe }}</div>
+		<div>{{ post.content | sanitize_html }}</div>
 		<br />
 		<div>
 			<a href="{{url_for('post.posts_all')}}" class="btn btn-secondary">Posts</a>
@@ -14,9 +14,7 @@
 			<a href="{{url_for('post.post_update',post_id=post_id)}}" class="btn btn-primary"
 				>Update</a
 			>
-			<a href="{{url_for('post.post_delete',post_id=post_id)}}" class="btn btn-danger"
-				>Delete</a
-			>
+			{{ delete_submit(url_for('post.post_delete',post_id=post_id), "btn btn-danger") }}
 			{% endif %}
 		</div>
 	</form>

@@ -1,4 +1,6 @@
-"""Frontend Flask app for the Flask APIs project.""" ""
+"""Frontend Flask app for the Flask APIs project."""
+import os
+
 from flask import Flask, render_template
 
 app = Flask(__name__)
@@ -11,4 +13,8 @@ def home():
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5001, debug=True)
+    app.run(
+        host=os.environ.get("FLASK_HOST", "127.0.0.1"),
+        port=5001,
+        debug=os.environ.get("FLASK_DEBUG") == "1",
+    )

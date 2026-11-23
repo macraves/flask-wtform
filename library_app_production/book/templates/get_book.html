@@ -1,4 +1,4 @@
-{% extends 'base.html' %}{% block content %}
+{% extends 'base.html' %}{% from "_macros.html" import delete_button, delete_submit %}{% block content %}
 <h1>Book Info</h1>
 <div class="shadow p-3 mb-5 bg-body-tertiary rounded col-8">
 	<strong>
@@ -20,9 +20,7 @@
 		<a href="{{url_for('book.book_update',book_id=book_id)}}" class="btn btn-primary"
 			>Update</a
 		>
-		<a href="{{url_for('book.book_delete',book_id=book_id)}}" class="btn btn-danger"
-			>Delete</a
-		>
+		{{ delete_button(url_for('book.book_delete',book_id=book_id), "btn btn-danger") }}
 		{% endif %}
 	</div>
 </div>

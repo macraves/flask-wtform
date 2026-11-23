@@ -1,11 +1,15 @@
 """Api for the backend app.
+
 version control applied. in VERSION dict show available version
 0 is the first version where global POSTS object is used
 1.0 is the second version where JSON file is used given number of sample generated randomly
 1.1 adds date stamp to the posts
 1.2 adds author to the posts
 Related functions are backend_methods.py
-!!!! limiter package gives error, still workin on it"""
+!!!! limiter package gives error, still workin on it.
+"""
+
+import os
 
 from flask import Flask, jsonify, request
 from flask_cors import CORS
@@ -35,7 +39,7 @@ POSTS = [
 
 
 def global_posts(version):
-    """global posts"""
+    """Global posts."""
     if version == 0:
         return POSTS
 
@@ -59,13 +63,18 @@ class CustomError(Exception):
     """Custom error class."""
 
     def __init__(self, message, status_code):
+        """Store the error message and HTTP status code.
+
+        Args:
+            message: Error description.
+            status_code (int): HTTP status code to return.
+        """
         self.message = message
         self.status_code = status_code
 
 
 def titilized_post(posts: list):
-    """Ignores whitespaces and applies title method
-    on json files posts"""
+    """Strip whitespace and title-case string values of JSON file posts."""
     titlized = []
     for post in posts:
         for key in post:
@@ -76,15 +85,14 @@ def titilized_post(posts: list):
 
 
 def page_view(star, end, data: dict or list):
-    """limitation of the page view and in a case global POSTS
-    usage"""
+    """Return one page slice of posts from a list or the global POSTS dict."""
     if isinstance(data, list):
         return jsonify(data[star:end])
     return jsonify(data["posts"][star:end])
 
 
 def format_common_key_value(queries: dict, keys: list):
-    """Format request args values accordingly to the values in the posts"""
+    """Format request args values accordingly to the values in the posts."""
     formattables = list(filter(lambda x: x not in ("id", "date"), keys))
     formatted = {}
     for key, val in queries.items():
@@ -100,7 +108,7 @@ def format_common_key_value(queries: dict, keys: list):
 
 
 def sort_without_date(sort, posts, direction, exsits_params):
-    """sort without date, default direction value is set (asc)"""
+    """Sort without date, default direction value is set (asc)."""
     if sort == "date":
         posts = titilized_post(posts)
         posts = sorted(
@@ -114,8 +122,11 @@ def sort_without_date(sort, posts, direction, exsits_params):
 
 
 def sort_with_date(sort, posts, direction, exists_params):
-    """Date string has to be converted time object. String date format
-    can not be accuaretly sorted. Default direction value is set (asc)"""
+    """Sort posts by date.
+
+    Date strings are converted to datetime objects, because string dates
+    can not be sorted accurately. Default direction value is set (asc).
+    """
     posts = sorted(
         posts,
         key=lambda post: datetime.strptime(post[sort], "%Y-%m-%d"),
@@ -127,9 +138,11 @@ def sort_with_date(sort, posts, direction, exists_params):
 @app.route("/api/posts", methods=["GET"])
 # @limiter.limit("5 per minute")
 def get_posts():
-    """Get all posts. It represents how to do version control
-    unnecessary to at version variable but it gives general idea"""
+    """Get all posts.
 
+    It represents how to do version control; the version variable is not
+    strictly necessary but it gives the general idea.
+    """
     version = CHOSEN
     if version == 0:
         posts = VERSION[str(version)](version)
@@ -184,7 +197,6 @@ def get_posts():
 @app.route("/api/posts/search", methods=["GET"])
 def search_posts():
     """Search posts by title or content."""
-
     if CHOSEN == 0:
         posts = VERSION[str(CHOSEN)]
     if CHOSEN >= 1.0:
@@ -286,7 +298,7 @@ def update_post(post_id):
 
 @app.errorhandler(CustomError)
 def handle_custom_error(error):
-    "custom error handler"
+    """Custom error handler."""
     response = {
         "message": error.message,
         "status_code": error.status_code,
@@ -295,4 +307,8 @@ def handle_custom_error(error):
 
 
 if __name__ == "__main__":
-    app.run(host="0.0.0.0", port=5002, debug=True)
+    app.run(
+        host=os.environ.get("FLASK_HOST", "127.0.0.1"),
+        port=5002,
+        debug=os.environ.get("FLASK_DEBUG") == "1",
+    )

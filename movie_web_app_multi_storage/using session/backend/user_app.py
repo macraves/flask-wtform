@@ -1,4 +1,6 @@
 """Backend for the web app."""
+import os
+
 # import os
 # import sys
 
@@ -18,8 +20,10 @@ app = Flask(__name__)
 
 
 def create_user_instance(user_id):
-    """Sample of user instance get its actual value by given ID
-    In future planing to add storage key that gets value as text json or csv"""
+    """Build a User instance from the stored record with the given ID.
+
+    In future planing to add storage key that gets value as text json or csv.
+    """
     sample = {
         "nama": "sample",
         "password": "sample",
@@ -35,15 +39,20 @@ def create_user_instance(user_id):
 
 
 class BackendError(Exception):
-    """Raise only Backend related errors"""
+    """Raise only Backend related errors."""
 
     def __init__(self, message: object) -> None:
+        """Create the error with a message.
+
+        Args:
+            message (object): Error description.
+        """
         super().__init__(message)
 
 
 @app.route("/users", methods=["GET"])
 def list_users():
-    """Loods user movies list"""
+    """Loods user movies list."""
     users = storage.get_all_users()
     user_names = [users[user_id]["name"] for user_id in users]
     names_string = "\n".join(user_names)
@@ -52,7 +61,7 @@ def list_users():
 
 @app.route("/users/<user_id>", methods=["GET"])
 def user_movies(user_id):
-    """Get methods with given query parameter"""
+    """Get methods with given query parameter."""
     user_id = str(user_id)
     users = storage.get_all_users()
     if user_id in users:
@@ -62,7 +71,7 @@ def user_movies(user_id):
 
 @app.route("/add_user", methods=["POST"])
 def add_user():
-    """Reads json base user POST to add new user"""
+    """Reads json base user POST to add new user."""
     try:
         given_request = request.get_json()
         request_data = {
@@ -82,4 +91,4 @@ def add_user():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=os.environ.get("FLASK_DEBUG") == "1")

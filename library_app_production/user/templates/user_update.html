@@ -1,7 +1,7 @@
-{% extends 'base.html' %}{% block content %}
+{% extends 'base.html' %}{% from "_macros.html" import delete_button, delete_submit %}{% block content %}
 <h1>Updating User Info:</h1>
 <div class="shadow p-3 mb-5 bg-body-tertiary rounded col-8">
-	<a href="{{ url_for('dashboard')}}" class="btn btn-outline-secondary">Back</a>
+	<a href="{{ url_for('user.dashboard')}}" class="btn btn-outline-secondary">Back</a>
 	<form method="POST">
 		{{ form.hidden_tag() }}
 		<div>
@@ -23,9 +23,7 @@
 			<a href="{{url_for('user.users_all')}}" class="btn btn-secondary">Back</a>
 			{% if current_user.id == 1 or current_user.id == user_id %} {{
 			form.submit(class="btn btn-primary") }}
-			<a href="{{url_for('user.user_delete', user_id=user_id)}}" class="btn btn-danger"
-				>Delete</a
-			>
+			{{ delete_submit(url_for('user.user_delete', user_id=user_id), "btn btn-danger") }}
 		</div>
 		{% endif %}
 	</form>

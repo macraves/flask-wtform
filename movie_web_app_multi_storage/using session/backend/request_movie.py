@@ -1,36 +1,56 @@
-"""Creating API method to connect Web"""
+"""Request movie data from the OMDb API."""
 import json
-import requests
+import os
+from urllib.parse import urlencode
 
-YOUR_API_KEY = "***REMOVED***"
-BASE_URL = "http://www.omdbapi.com"
+import requests
+from dotenv import load_dotenv
+
+# Picks up OMDB_API_KEY from the nearest .env file in this or a parent folder
+load_dotenv()
+YOUR_API_KEY = os.environ.get("OMDB_API_KEY")
+BASE_URL = "https://www.omdbapi.com"
 
 
 class RequestErrors(Exception):
     """RequestErrors is a class for raising errors."""
 
     def __init__(self, message: object) -> None:
+        """Create the error with a message.
+
+        Args:
+            message (object): Error description.
+        """
         super().__init__(message)
 
 
 def get_name_method_requests(method_name: str, movie_name: str) -> str:
-    """Sets the  movie name search end point method.
+    """Build the OMDb search URL for a movie name.
+
     Args:
         method_name (str): "name" string.
         movie_name (str): given string by user.
+
     Returns:
         str: returns whole url modified by user input.
+
+    Raises:
+        RequestErrors: If OMDB_API_KEY is not set.
     """
-    method_api = {"name": f"{BASE_URL}/?t={movie_name}&apikey={YOUR_API_KEY}"}
+    if not YOUR_API_KEY:
+        raise RequestErrors("OMDB_API_KEY environment variable is not set")
+    method_api = {"name": f"{BASE_URL}/?{urlencode({'t': movie_name, 'apikey': YOUR_API_KEY})}"}
     if method_name in method_api:
         return method_api[method_name]
     return None
 
 
 def get_by_name(movie_name: str) -> dict:
-    """get_by_name is a method that returns a dict.
+    """Fetch a movie from OMDb by title.
+
     Args:
         movie_name (str): given string by user.
+
     Returns:
         parsed_data: returns dictionary of movie.
     """
@@ -55,7 +75,14 @@ def get_by_name(movie_name: str) -> dict:
 
 
 def extract_movie_data(movie_name):
-    """Extract Title, Director, Year, imdbRating"""
+    """Extract Title, Year, imdbRating and Poster for a movie.
+
+    Args:
+        movie_name (str): Movie title to look up.
+
+    Returns:
+        dict: Selected movie fields.
+    """
     movie = get_by_name(movie_name)
     extracted_movie_data = {
         "Title": movie.get("Title"),

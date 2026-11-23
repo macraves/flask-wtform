@@ -1,4 +1,4 @@
-{% extends 'base.html' %}{% block content %}
+{% extends 'base.html' %}{% from "_macros.html" import delete_button, delete_submit %}{% block content %}
 <h1>User Info</h1>
 <div class="shadow p-3 mb-5 bg-body-tertiary rounded col-8">
 	<form method="POST">
@@ -17,9 +17,7 @@
 			<a href="{{url_for('user.user_update',user_id=user.id)}}" class="btn btn-primary"
 				>Update</a
 			>
-			<a href="{{url_for('user.user_delete',user_id=user.id)}}" class="btn btn-danger"
-				>Delete</a
-			>
+			{{ delete_submit(url_for('user.user_delete',user_id=user.id), "btn btn-danger") }}
 			{% endif %}
 		</div>
 	</form>

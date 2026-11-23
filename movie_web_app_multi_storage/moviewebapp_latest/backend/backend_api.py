@@ -1,4 +1,9 @@
-"""To able use backend user has to sign in to get access storage instance"""
+"""To able use backend user has to sign in to get access storage instance."""
+import os
+import secrets
+import warnings
+
+from dotenv import load_dotenv
 from flask import Flask, jsonify, request
 from flask_login import (
     LoginManager,
@@ -12,8 +17,15 @@ import frontend.forms_and_session_methods as ffasm
 from backend.request_movie import extract_movie_data, RequestErrors
 from frontend.movie_wtf import UserForm
 
+load_dotenv()
+
+USER_UPDATE_FIELDS = {"name", "username", "email", "password"}
+
 app = Flask(__name__)
-app.secret_key = "***REMOVED***"
+app.secret_key = os.environ.get("SECRET_KEY")
+if not app.secret_key:
+    warnings.warn("SECRET_KEY is not set; using a random key, sessions reset on restart.")
+    app.secret_key = secrets.token_hex(32)
 app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{ffasm.SQLITE_STORAGE_PATH}"
 
 db.init_app(app)
@@ -26,7 +38,7 @@ login_manager.login_view = "api_login"
 
 
 def get_users(storage):
-    """Returns Sqlite database users tables users records"""
+    """Returns Sqlite database users tables users records."""
     users = storage.get_all_users()
     if not isinstance(users, dict):
         users_dict = [user.to_dict() for user in users]
@@ -35,7 +47,7 @@ def get_users(storage):
 
 @login_manager.user_loader
 def load_user(user_id):
-    """Gets flask sessin object user key to assing storage type"""
+    """Gets flask sessin object user key to assing storage type."""
     storage_str = ffasm.session["user"].get("storage")
     storage = ffasm.get_storage_class(storage_text=storage_str)
     return storage.find_user(user_id=user_id)
@@ -50,20 +62,20 @@ def api_login():
     storage_type = data.get("storage").strip()
     if storage_type != "sqlite":
         return jsonify({"error": "not supported storage type"})
-    ffasm.session["user"] = {"username": username, "storage": storage_type}
     storage = ffasm.get_storage_class(storage_text=storage_type)
     user = storage.find_user(username=username)
     if not user:
         return jsonify({"error": "Invalid username"}), 401
     if not storage.check_password(user_id=user.id, password=password):
         return jsonify({"error": "Invalid password"}), 401
+    ffasm.session["user"] = {"username": username, "storage": storage_type}
     login_user(user)
     return jsonify({"message": "Login successful"}), 200
 
 
 @app.route("/api/user/add", methods=["POST"])
 def api_add_user():
-    """Endpoint to add new user"""
+    """Endpoint to add new user."""
     data = request.get_json()
     storage = ffasm.get_storage_class(storage_text="sqlite")
     try:
@@ -86,11 +98,18 @@ def api_list_users():
 @login_required
 def api_user_update(user_id):
     """Endpoint to user update."""
+    if current_user.id != user_id:
+        return jsonify({"error": "forbidden"}), 403
     _, storage = ffasm.get_user_and_storage()
     user = storage.find_user(user_id=user_id)
     if user is None:
         return jsonify({"warning": "User does not exitst"}), 404
-    data = request.get_json()
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"error": "JSON object body required"}), 400
+    unknown = set(data) - USER_UPDATE_FIELDS
+    if unknown:
+        return jsonify({"error": f"Unsupported fields: {sorted(unknown)}"}), 400
     for key in data:
         if "password" in data and data.get(key, None) is not None:
             continue
@@ -107,8 +126,11 @@ def api_user_update(user_id):
 
 
 @app.route("/api/user-delete/<int:user_id>", methods=["DELETE"])
+@login_required
 def api_user_delete(user_id):
-    """Endpoint to delete user"""
+    """Endpoint to delete user."""
+    if current_user.id != user_id:
+        return jsonify({"error": "forbidden"}), 403
     _, storage = ffasm.get_user_and_storage()
     user = storage.find_user(user_id=user_id)
     form = UserForm(obj=user)
@@ -159,4 +181,4 @@ def api_add_movie():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=os.environ.get("FLASK_DEBUG") == "1")

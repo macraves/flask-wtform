@@ -1,5 +1,6 @@
-"""API Endpoints for flight data"""
+"""API Endpoints for flight data."""
 import json
+import os
 from datetime import datetime
 from data import FlightData, CrudError
 import query_list as ql
@@ -12,9 +13,12 @@ FLIGHT_DATA = FlightData(ql.DATABASE_URI)
 
 @app.route("/api/flight/<int:flight_id>", methods=["GET"])
 def find_flight_by_id(flight_id):
-    """Calls FlightData related method to get flight by ID query result then
+    """Return a flight by ID as JSON.
+
+    Calls FlightData related method to get flight by ID query result then
     converts the result to DataFrame, this way the iteration will get quicker
-    for this method, convertiong df object to dictionary and then to JSON object"""
+    for this method, convertiong df object to dictionary and then to JSON object.
+    """
     rows = FLIGHT_DATA.find_flight_by_id(flight_id)
     if not rows:
         return "No flight found."
@@ -28,7 +32,7 @@ def find_flight_by_id(flight_id):
 
 @app.route("/api/flights", methods=["POST"])
 def add_flight():
-    """JSON dictionary is sent to this endpoint and then it is added to the database"""
+    """JSON dictionary is sent to this endpoint and then it is added to the database."""
     flight = request.get_json()
     if all(key in flight for key in ("id", "airline", "delay")):
         does_exist = FLIGHT_DATA.find_flight_by_id(flight["id"])
@@ -44,9 +48,11 @@ def add_flight():
 
 @app.route("/api/flights/<int:flight_id>", methods=["PUT"])
 def update_flight(flight_id):
-    """Sends endpoint and then it is updated in the database
+    """Update a flight in the database from the JSON body.
+
     Current implementation does not allow to change the flight ID
-    Need to add a check for that and find a method to check CRUD operation result"""
+    Need to add a check for that and find a method to check CRUD operation result.
+    """
     flight = request.get_json()
     does_exist = FLIGHT_DATA.find_flight_by_id(flight_id)
     if not does_exist:
@@ -70,7 +76,7 @@ def update_flight(flight_id):
 
 @app.route("/api/flights/<int:flight_id>", methods=["DELETE"])
 def delete_flight(flight_id):
-    """Deletes flight by ID"""
+    """Deletes flight by ID."""
     does_exist = FLIGHT_DATA.find_flight_by_id(flight_id)
     if not does_exist:
         return jsonify({"error": "Flight does not exist"}), 404
@@ -83,7 +89,7 @@ def delete_flight(flight_id):
 
 @app.route("/api/flights", methods=["GET"])
 def get_flights_by_date():
-    """Gets users year, month and day input and calls FlightData related method"""
+    """Gets users year, month and day input and calls FlightData related method."""
     try:
         year = request.args.get("year")
         month = request.args.get("month")
@@ -105,7 +111,7 @@ def get_flights_by_date():
 
 @app.route("/api/airline/delays/date", methods=["GET"])
 def delayed_airline_flights_by_date():
-    """Gets users year, month and day input and calls FlightData related method"""
+    """Gets users year, month and day input and calls FlightData related method."""
     try:
         year = request.args.get("year")
         month = request.args.get("month")
@@ -126,4 +132,4 @@ def delayed_airline_flights_by_date():
 
 
 if __name__ == "__main__":
-    app.run(debug=True)
+    app.run(debug=os.environ.get("FLASK_DEBUG") == "1")

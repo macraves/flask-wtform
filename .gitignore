@@ -60,3 +60,6 @@ htmlcov/
 *.json
 # Except config files:
 !config.json
+
+# Git stackdump
+*.stackdump

@@ -1,6 +1,8 @@
-"""Author related routes"""
+"""Author related routes."""
+from markupsafe import Markup
 from flask import Blueprint, flash, redirect, render_template, url_for
 from flask_login import current_user, login_required
+from permissions import is_admin
 from allwebforms import AuthorForm
 from data_models import db, Author, Book
 
@@ -11,14 +13,19 @@ author_bp = Blueprint(
 
 
 class AuthorError(Exception):
-    """Author error"""
+    """Author error."""
 
     def __init__(self, message):
+        """Store the error message.
+
+        Args:
+            message (str): Error description.
+        """
         self.message = message
 
 
 def reset_author_form(form):
-    """Reset pos form"""
+    """Reset pos form."""
     form.name.data = ""
     form.birth_date.data = ""
     form.death_date.data = ""
@@ -26,7 +33,7 @@ def reset_author_form(form):
 
 @author_bp.route("/get_author/<int:author_id>/")
 def get_author(author_id):
-    """Get author by id"""
+    """Get author by id."""
     author = Author.query.get_or_404(author_id)
     return render_template("get_author.html", author=author, author_id=author_id)
 
@@ -35,7 +42,7 @@ def get_author(author_id):
 @author_bp.route("/add", methods=["GET", "POST"])
 @login_required
 def author_add():
-    """Add author"""
+    """Add author."""
     if not current_user.is_authenticated:
         flash("You need to login first")
         return redirect(url_for("user.login"))
@@ -52,7 +59,7 @@ def author_add():
             )
             db.session.add(author)
             db.session.commit()
-        flash(f"<strong>{form.name.data}</strong> has been added")
+        flash(Markup("<strong>{}</strong> has been added").format(form.name.data))
         reset_author_form(form)
         return redirect("/")
     else:
@@ -70,7 +77,10 @@ def author_add():
 @author_bp.route("/update/<int:author_id>/", methods=["GET", "POST"])
 @login_required
 def author_update(author_id):
-    """Update author"""
+    """Update author. Only the admin can change shared author records."""
+    if not is_admin():
+        flash("Only the admin can update authors")
+        return redirect(url_for("author.authors_all"))
     author = Author.query.get_or_404(author_id)
     if author is None:
         flash("Author not found")
@@ -100,17 +110,17 @@ def author_update(author_id):
 # Author list
 @author_bp.route("/")
 def authors_all():
-    """authors page"""
+    """Authors page."""
     authors = Author.query.all()
     return render_template("authors_all.html", header="All authors", authors=authors)
 
 
 # Delete author
-@author_bp.route("/delete/<int:author_id>/", methods=["GET", "POST"])
+@author_bp.route("/delete/<int:author_id>/", methods=["POST"])
 @login_required
 def author_delete(author_id):
-    """Delete author, Only authorized user can delete author"""
-    if current_user.id == 1:
+    """Delete author, Only authorized user can delete author."""
+    if is_admin():
         author = Author.query.get_or_404(author_id)
         if author is None:
             flash("author not found")
@@ -121,7 +131,7 @@ def author_delete(author_id):
         for book in books_to_delete:
             db.session.delete(book)
         flash(
-            f"<strong>author ID: {author.id}</strong> and associated books have been deleted"
+            Markup("<strong>author ID: {}</strong> and associated books have been deleted").format(author.id)
         )
         # then author
         try:

@@ -1,4 +1,4 @@
-{% extends 'base.html' %}{% block content %}
+{% extends 'base.html' %}{% from "_macros.html" import delete_button, delete_submit %}{% block content %}
 <h1>ALL POSTS</h1>
 <div class="shadow p-3 mb-5 bg-body-tertiary rounded col-8">
 	{% for post in posts %}
@@ -11,7 +11,7 @@
 				</div>
 				<div><strong>Author ID: {{ post.author_id}}</strong></div>
 				<div><strong>subtitle:</strong> {{ post.subtitle }}</div>
-				<div><strong>content:</strong><br />{{ post.content | safe }}</div>
+				<div><strong>content:</strong><br />{{ post.content | sanitize_html }}</div>
 				<div><strong>date posted:</strong> {{ post.added_date }}</div>
 				{% if current_user.id == 1 or current_user.id == post.author_id %}
 				<div>
@@ -20,9 +20,7 @@
 						class="btn btn-primary"
 						>Update</a
 					>
-					<a href="{{url_for('post.post_delete',post_id=post.id)}}" class="btn btn-danger"
-						>Delete</a
-					>
+					{{ delete_button(url_for('post.post_delete',post_id=post.id), "btn btn-danger") }}
 				</div>
 				{% endif %}
 			</td>
