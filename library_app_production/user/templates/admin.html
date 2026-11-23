@@ -1,7 +1,4 @@
 {% extends 'base.html' %}{% from "_macros.html" import delete_button, delete_submit %}{% block content %}
-{% if current_user == 1%}
-<h5>User ID 1 is the Admin can change whole content</h5>
-{% endif %}
 <!-- main -->
 <h3>You are in admin page can do all CRUD methods</h3>
 <div class="shadow p-3 mb-5 bg-body-tertiary rounded main-div">
@@ -17,7 +14,7 @@
                     <div><strong>Brith Date: {{ author.birth_date }}</strong></div>
                     <div><strong>Death Date: {{ author.death_date }}</div>
                     <div><strong>Date Added:</strong> {{ author.added_date }}</div>
-                    {% if current_user.id == 1 %}
+                    {% if current_user.is_admin %}
                     <div>
                         <a href="{{url_for('author.author_update',author_id=author.id)}}" class="btn btn-primary"
                             >Update</a
@@ -48,7 +45,7 @@
                     <div><strong>Rating: {{ book.rating }}</div>
                     <div><strong>Condition: {{ book.condition }}</div>
                     <div><strong>date added:</strong> {{ book.added_date }}</div>
-                    {% if current_user.id == 1 or current_user.id == book.user_id %}
+                    {% if current_user.is_admin or current_user.id == book.user_id %}
                     <div>
                         <a
                             href="{{url_for('book.book_update',book_id=book.id)}}"
@@ -78,7 +75,7 @@
                     <div><strong>subtitle:</strong> {{ post.subtitle }}</div>
                     <div><strong>content:</strong><br />{{ post.content | sanitize_html }}</div>
                     <div><strong>date posted:</strong> {{ post.added_date }}</div>
-                    {% if current_user.id == 1 or current_user.id == post.author_id %}
+                    {% if current_user.is_admin or current_user.id == post.author_id %}
                     <div>
                         <a
                             href="{{url_for('post.post_update',post_id=post.id)}}"
@@ -109,7 +106,7 @@
                     <div><strong>email:</strong> {{ user.email }}</div>
                     <div><strong>about user:</strong> {{ user.about_user }}</div>
                     <div><strong>added date:</strong> {{ user.added_date }}</div>
-                    {% if current_user.id == 1 or current_user.id == user.author_id %}
+                    {% if current_user.is_admin or current_user.id == user.id %}
                     <div>
                         <a
                             href="{{url_for('user.user_update',user_id=user.id)}}"

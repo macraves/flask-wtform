@@ -2,7 +2,7 @@
 from markupsafe import Markup
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
-from permissions import can_modify
+from permissions import can_modify, flash_form_errors
 from allwebforms import PostForm, SearchForm
 from data_models import db, Post
 
@@ -34,11 +34,13 @@ def reset_post_form(form):
 def search():
     """Search function."""
     form = SearchForm()
-    if form.validate_on_submit():
-        searched = form.searched.data
-        posts = Post.query.filter(Post.content.like("%" + searched + "%"))
-        posts = posts.order_by(Post.title).all()
-    return render_template("search.html", searched=searched, posts=posts)
+    if not form.validate_on_submit():
+        flash("Enter a search term")
+        return redirect(url_for("index"))
+    searched = form.searched.data
+    posts = Post.query.filter(Post.content.like("%" + searched + "%"))
+    posts = posts.order_by(Post.title).all()
+    return render_template("post_search.html", searched=searched, posts=posts)
 
 
 @post_bp.route("/get_post/<int:post_id>/")
@@ -81,6 +83,8 @@ def post_add():
         except PostError:
             flash("Operation failed during the add process")
         return redirect("/posts")
+    if request.method == "POST":
+        flash_form_errors(form)
     return render_template("post_add.html", header="Add Post", form=form)
 
 
@@ -96,17 +100,18 @@ def post_update(post_id):
         flash("You can only change your own posts")
         return redirect(url_for("post.posts_all"))
     form = PostForm(obj=post)
-    if request.method == "POST":
-        post.title = request.form.get("title").title().strip()
-        post.subtitle = request.form.get("subtitle").strip()
-        post.content = request.form.get("content").strip()
+    if form.validate_on_submit():
+        post.title = form.title.data.title().strip()
+        post.subtitle = form.subtitle.data.strip()
+        post.content = form.content.data.strip()
         try:
             db.session.commit()
             flash(Markup("<strong>Post ID: {}</strong> has been updated").format(post.id))
-            reset_post_form(form)
         except PostError:
             flash("Operation failed during the update process")
         return redirect(url_for("post.posts_all"))
+    if request.method == "POST":
+        flash_form_errors(form)
     return render_template(
         "post_update.html", header="Update post", form=form, post_id=post_id
     )

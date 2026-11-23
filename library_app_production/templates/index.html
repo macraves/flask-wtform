@@ -1,7 +1,4 @@
 {% extends 'base.html' %}{% block content %}
-{% if current_user == 1 %}
-<h5>User ID 1 is the Admin can change whole content</h5>
-{% endif %}
 <!-- main -->
 <div class="shadow p-3 mb-5 bg-body-tertiary rounded main-div">  
     <!-- sub 1 -->
@@ -78,7 +75,7 @@
                     <div><strong>User ID: {{ user.id}}</strong></div>
                     <div><strong>username:</strong> {{ user.username }}</div>
                     <div><strong>name:</strong><br />{{ user.name }}</div>
-                    <div><strong>email:</strong> {{ user.email }}</div>
+                    {% if current_user.is_authenticated and (current_user.is_admin or current_user.id == user.id) %}<div><strong>email:</strong> {{ user.email }}</div>{% endif %}
                     <div><strong>about user:</strong> {{ user.about_user }}</div>
                     <div><strong>added date:</strong> {{ user.added_date }}</div>
                     

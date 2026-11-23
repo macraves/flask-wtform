@@ -13,7 +13,7 @@
 				<div><strong>subtitle:</strong> {{ post.subtitle }}</div>
 				<div><strong>content:</strong><br />{{ post.content | sanitize_html }}</div>
 				<div><strong>date posted:</strong> {{ post.added_date }}</div>
-				{% if current_user.id == 1 or current_user.id == post.author_id %}
+				{% if current_user.is_admin or current_user.id == post.author_id %}
 				<div>
 					<a
 						href="{{url_for('post.post_update',post_id=post.id)}}"

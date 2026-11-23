@@ -2,8 +2,9 @@
 from markupsafe import Markup
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required, login_user, logout_user
-from permissions import can_modify, is_admin
-from allwebforms import UserForm, LoginForm
+from sqlalchemy.exc import IntegrityError
+from permissions import can_modify, flash_form_errors, is_admin
+from allwebforms import LoginForm, UserForm, UserUpdateForm
 from data_models import db, Author, Book, Post, User
 
 # Create blueprints connection
@@ -20,6 +21,55 @@ class UserError(Exception):
             message (str): Error description.
         """
         self.message = message
+
+
+def find_conflict(username, email, exclude_id=None):
+    """Find an existing account that already uses a username or email.
+
+    Args:
+        username (str): Wanted username.
+        email (str): Wanted email address.
+        exclude_id (int | None): User id to ignore, the one being edited.
+
+    Returns:
+        str | None: A message naming the clashing field, or None if both are free.
+    """
+    by_name = User.query.filter_by(username=username).first()
+    if by_name and by_name.id != exclude_id:
+        return "That username is already taken"
+    by_email = User.query.filter_by(email=email).first()
+    if by_email and by_email.id != exclude_id:
+        return "That email is already registered"
+    return None
+
+
+def apply_profile(user, form):
+    """Copy validated profile fields onto a user and save them.
+
+    Args:
+        user (User): Account to change.
+        form (UserUpdateForm): Validated form holding the new values.
+
+    Returns:
+        bool: True when saved, False when a username or email clash was flashed.
+    """
+    username = form.username.data.strip()
+    email = form.email.data.strip()
+    conflict = find_conflict(username, email, exclude_id=user.id)
+    if conflict:
+        flash(conflict)
+        return False
+    user.name = form.name.data.title().strip()
+    user.username = username
+    user.email = email
+    user.about_user = (form.about_user.data or "").strip()
+    try:
+        db.session.commit()
+    except IntegrityError:
+        db.session.rollback()
+        flash("That username or email is already in use")
+        return False
+    return True
 
 
 # Admin API
@@ -73,17 +123,14 @@ def dashboard():
     if user is None:
         flash("User not found")
         return redirect("/users")
-    form = UserForm(obj=user)
-    if request.method == "POST":
-        user.name = request.form.get("name").title().strip()
-        user.username = request.form.get("username").strip()
-        user.email = request.form.get("email").strip()
-        user.about_user = request.form.get("about_user").strip()
-        try:
-            db.session.commit()
-            flash(Markup("<strong>{}</strong> has been updated").format(form.username.data))
-        except UserError:
-            flash("Operation failed during the update process")
+    form = UserUpdateForm(obj=user)
+    if form.validate_on_submit():
+        if apply_profile(user, form):
+            flash(Markup("<strong>{}</strong> has been updated").format(user.username))
+        else:
+            db.session.rollback()
+    elif request.method == "POST":
+        flash_form_errors(form)
     return render_template(
         "dashboard.html", header="Dashboard", form=form, user_id=user_id
     )
@@ -120,24 +167,30 @@ def user_add():
     """Add user."""
     form = UserForm()
     if form.validate_on_submit():
+        username = form.username.data.strip()
+        email = form.email.data.strip()
+        conflict = find_conflict(username, email)
+        if conflict:
+            flash(conflict)
+            return render_template("user_add.html", header="Add User", form=form)
         user = User(
             name=form.name.data.title().strip(),
-            username=form.username.data.strip(),
-            email=form.email.data.strip(),
-            about_user=form.about_user.data.strip(),
+            username=username,
+            email=email,
+            about_user=(form.about_user.data or "").strip(),
             password=form.password1.data.strip(),
         )
-        if user is None or not user.verify_password(form.password1.data.strip()):
-            flash("Invalid username or password")
-            return render_template("user_add.html", header="Add User", form=form)
         try:
             db.session.add(user)
             db.session.commit()
-            flash(Markup("<strong>{}</strong> has been added").format(form.username.data))
-            reset_user_form(form)
-        except UserError:
-            flash("Operation failed during the add process")
+        except IntegrityError:
+            db.session.rollback()
+            flash("That username or email is already in use")
+            return render_template("user_add.html", header="Add User", form=form)
+        flash(Markup("<strong>{}</strong> has been added").format(username))
         return redirect(url_for("user.login"))
+    if request.method == "POST":
+        flash_form_errors(form)
     return render_template("user_add.html", header="Add User", form=form)
 
 
@@ -152,19 +205,13 @@ def user_update(user_id):
     if user is None:
         flash("User not found")
         return redirect("/users")
-    form = UserForm(obj=user)
-    if request.method == "POST":
-        user.name = request.form.get("name").title().strip()
-        user.username = request.form.get("username").strip()
-        user.email = request.form.get("email").strip()
-        user.about_user = request.form.get("about_user").strip()
-        try:
-            db.session.commit()
-            flash(Markup("<strong>{}</strong> has been updated").format(form.username.data))
-            reset_user_form(form)
-        except UserError:
-            flash("Operation failed during the update process")
-        return redirect(url_for("user.users_all"))
+    form = UserUpdateForm(obj=user)
+    if form.validate_on_submit():
+        if apply_profile(user, form):
+            flash(Markup("<strong>{}</strong> has been updated").format(user.username))
+            return redirect(url_for("user.users_all"))
+    elif request.method == "POST":
+        flash_form_errors(form)
     return render_template(
         "user_update.html", header="Update User", form=form, user_id=user_id
     )
@@ -181,19 +228,14 @@ def user_delete(user_id):
     if user is None:
         flash("User not found")
         return redirect("/users")
+    if user.is_admin and User.query.filter_by(is_admin=True).count() == 1:
+        flash("The last admin account cannot be deleted")
+        return redirect(url_for("user.users_all"))
     try:
+        # Cascades to the books and posts the user owns
         db.session.delete(user)
         db.session.commit()
         flash(Markup("<strong>{}</strong> has been deleted").format(user.username))
     except UserError:
         flash("Operation failed during the delete process")
     return redirect("/users")
-
-
-def reset_user_form(form):
-    """Reset user form."""
-    form.name.data = ""
-    form.username.data = ""
-    form.email.data = ""
-    form.password1.data = ""
-    form.password2.data = ""

@@ -1,5 +1,8 @@
 """Flask app for database, create its database extension, and create its table."""
 
+import os
+from datetime import datetime
+import click
 from dotenv import load_dotenv
 
 # Load .env before importing app modules, some read env vars at import time
@@ -7,13 +10,20 @@ load_dotenv()
 
 # pylint: disable=wrong-import-position
 from flask import Flask, flash, redirect, render_template, url_for
-from flask_migrate import Migrate
 from flask_login import LoginManager
 from flask_ckeditor import CKEditor
 from flask_wtf.csrf import CSRFError, CSRFProtect
 from markupsafe import Markup
 import nh3
-from data_models import datetime, db, MYSQL_URI, Author, Book, Post, User, os
+from data_models import (
+    AnonymousUser,
+    Author,
+    Book,
+    Post,
+    User,
+    db,
+    default_database_uri,
+)
 from allwebforms import SearchForm
 from author.aroutes import author_bp
 from book.broutes import book_bp
@@ -25,7 +35,7 @@ if not SECRET_KEY:
     raise RuntimeError("SECRET_KEY is not set. Copy .env.example to .env and set it.")
 
 # Fall back to the local SQLite file when no database URI is configured
-DATABASE_URI = os.environ.get("SQLALCHEMY_DATABASE_URI") or MYSQL_URI
+DATABASE_URI = os.environ.get("SQLALCHEMY_DATABASE_URI") or default_database_uri()
 # Hosting providers often hand out postgres:// which SQLAlchemy 2 rejects
 if DATABASE_URI.startswith("postgres://"):
     DATABASE_URI = DATABASE_URI.replace("postgres://", "postgresql://", 1)
@@ -59,8 +69,6 @@ db.init_app(app)
 with app.app_context():
     db.create_all()
 
-
-migrate = Migrate(app, db)
 # Registry for blueprints
 app.register_blueprint(author_bp, url_prefix="/authors")
 app.register_blueprint(book_bp, url_prefix="/books")
@@ -72,6 +80,7 @@ app.register_blueprint(user_bp, url_prefix="/users")
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "user.login"
+login_manager.anonymous_user = AnonymousUser
 
 
 # Injecting to base.html to extend in navbar
@@ -85,7 +94,7 @@ def base():
 @login_manager.user_loader
 def load_user(user_id):
     """Load user by its id."""
-    return User.query.get(int(user_id))
+    return db.session.get(User, int(user_id))
 
 
 @app.route("/")
@@ -123,6 +132,22 @@ def page_not_found(_):
 def internarl_error(_):
     """Page not found error Internal Server Error 500."""
     return ("<h2>Internal Server Error 500</h2>"), 500
+
+
+@app.cli.command("make-admin")
+@click.argument("username")
+def make_admin(username):
+    """Grant admin rights to an existing user.
+
+    Args:
+        username (str): Username of the account to promote.
+    """
+    user = User.query.filter_by(username=username).first()
+    if user is None:
+        raise click.ClickException(f"No user named {username!r}")
+    user.is_admin = True
+    db.session.commit()
+    click.echo(f"{username} is now an admin")
 
 
 if __name__ == "__main__":

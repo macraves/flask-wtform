@@ -1,66 +1,60 @@
 """Html form objects for flask app."""
 
 from flask_wtf import FlaskForm
-
-# from wtforms.fields.html5 import DateField
-
-# from wtforms.widgets import TextArea
 from flask_ckeditor import CKEditorField
-from wtforms.validators import DataRequired, EqualTo, Optional
+from wtforms.validators import DataRequired, EqualTo, NumberRange, Optional
 from wtforms import (
     DateField,
     FloatField,
+    IntegerField,
     PasswordField,
     StringField,
     SubmitField,
-    TextAreaField,
 )
-
-
-class AIForm(FlaskForm):
-    """Prompt query for AI module, gets title of book and prompt from user."""
-
-    title = StringField("Book Title", validators=[DataRequired()])
-    prompt = TextAreaField("Prompt", validators=[DataRequired()])
-    submit = SubmitField("Submit")
+from data_models import MAX_PUBLICATION_YEAR, MIN_PUBLICATION_YEAR
 
 
 class SearchForm(FlaskForm):
-    """Users instance, every user has its own name and unique email."""
+    """Search box in the navbar."""
 
     searched = StringField("Searched", validators=[DataRequired()])
     submit = SubmitField("Submit")
 
 
-# Create Author form
 class AuthorForm(FlaskForm):
-    """Books row properties"""
+    """Author row properties. Birth and death dates are optional."""
 
     name = StringField("Name", validators=[DataRequired()])
-    birth_date = DateField("Birth Date", format="%Y-%m-%d", validators=[])
-    death_date = DateField("Death Date", format="%Y-%m-%d", validators=[])
+    birth_date = DateField("Birth Date", format="%Y-%m-%d", validators=[Optional()])
+    death_date = DateField("Death Date", format="%Y-%m-%d", validators=[Optional()])
     submit = SubmitField("Submit")
 
 
-class BookForm(FlaskForm):
-    """Books row properties"""
+class BookUpdateForm(FlaskForm):
+    """Fields of a book that can be changed after it was added."""
 
     title = StringField("Title", validators=[DataRequired()])
-    author = StringField("Author", validators=[DataRequired()])
-    isbn = StringField("ISBN", validators=[Optional()])
-    publication_year = DateField(
+    publication_year = IntegerField(
         "Publication Year",
-        format="%Y-%m-%d",
-        validators=[Optional()],
+        validators=[
+            Optional(),
+            NumberRange(min=MIN_PUBLICATION_YEAR, max=MAX_PUBLICATION_YEAR),
+        ],
     )
     condition = StringField("Condition", validators=[Optional()])
-    rating = FloatField("Rating", validators=[Optional()])
+    rating = FloatField("Rating", validators=[Optional(), NumberRange(min=0, max=5)])
     submit = SubmitField("Submit")
 
 
-# Create login manager instance
+class BookForm(BookUpdateForm):
+    """Book row properties for adding a book."""
+
+    author = StringField("Author", validators=[DataRequired()])
+    isbn = StringField("ISBN", validators=[Optional()])
+
+
 class LoginForm(FlaskForm):
-    """Users instance, every user has its own name and unique email."""
+    """Username and password of a registered user."""
 
     username = StringField("Username", validators=[DataRequired()])
     password = PasswordField("Password", validators=[DataRequired()])
@@ -68,37 +62,35 @@ class LoginForm(FlaskForm):
 
 
 class PasswordForm(FlaskForm):
-    """Users instance, every user has its own name and unique email."""
+    """Email and password pair."""
 
-    # variable = type(Label, parameters)
     email = StringField("email", validators=[DataRequired()])
     password = PasswordField("Password", validators=[DataRequired()])
     submit = SubmitField("Submit")
 
 
-# PostFrom class for POST method for html form
-# Caution: Model properties structure has to be ordered as the form fields
 class PostForm(FlaskForm):
-    """Users instance, every user has its own name and unique email."""
+    """Blog post written with the rich-text editor."""
 
-    # variable = type(Label, parameters)
     title = StringField("Title", validators=[DataRequired()])
     subtitle = StringField("Subtitle", validators=[DataRequired()])
     content = CKEditorField("Content", validators=[DataRequired()])
-    # content = StringField("Content", validators=[DataRequired()], widget=TextArea())
-    # it gets user_id from user table
-    # author = StringField("Author", validators=[DataRequired()])
     submit = SubmitField("Submit")
 
 
-# PasswordForm class for POST method for html form
-class UserForm(FlaskForm):
-    """Users instance, every user has its own name and unique email."""
+class UserUpdateForm(FlaskForm):
+    """Profile fields a user can change. The password is not part of it."""
 
     name = StringField("Name", validators=[DataRequired()])
     username = StringField("Username", validators=[DataRequired()])
     email = StringField("email", validators=[DataRequired()])
     about_user = StringField("About User", validators=[Optional()])
+    submit = SubmitField("Submit")
+
+
+class UserForm(UserUpdateForm):
+    """Registration form: the profile fields plus a confirmed password."""
+
     password1 = PasswordField(
         "password",
         validators=[
@@ -107,4 +99,3 @@ class UserForm(FlaskForm):
         ],
     )
     password2 = PasswordField("Confirm Password", validators=[DataRequired()])
-    submit = SubmitField("Submit")

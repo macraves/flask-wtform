@@ -12,9 +12,9 @@
 				</div>
 				<div><strong>name:</strong> {{ user.name }}</div>
 				<div><strong>user name:</strong> {{ user.username }}</div>
-				<div><strong>email:</strong> {{ user.email }}</div>
+				{% if current_user.is_authenticated and (current_user.is_admin or current_user.id == user.id) %}<div><strong>email:</strong> {{ user.email }}</div>{% endif %}
 				<div><strong>about user:</strong> {{ user.about_user }}</div>
-				{% if current_user.id == 1 or current_user.id == user.id %}
+				{% if current_user.is_admin or current_user.id == user.id %}
 				<div><strong>date joined:</strong> {{ user.added_date }}</div>
 				<br />
 				<div>
