@@ -107,12 +107,11 @@ class Product:
         if self.promotion:
             # Promotion object method return the result
             total_price = self.promotion.apply_promotion(self.price, quantity)
-            self.quantity -= quantity
-            return total_price
-        total_price = self.price * quantity
+        else:
+            total_price = self.price * quantity
         self.quantity -= quantity
         if self.quantity == 0:
-            Product.deactivate(self)
+            self.deactivate()
         return total_price
 
 
@@ -203,17 +202,24 @@ class LimitedProducts(Product):
         """Checks instance purchase count by its own allowed count
         if purchase get greater value than instance attribute it prints message
         and it will not execute last order but it returns 0"""
-        if Product.validate_buyer_quantity(quantity):
-            if self.shipped_so_far == self.allowed_ship_count:
-                raise ClassMethodException(
-                    f"{self.name} Product, cannot be ordered more than {self.allowed_ship_count} times")
-            if self.promotion is not None:
-                self.shipped_so_far += 1
-                self.quantity -= quantity
-                return self.promotion.apply_promotion(self.price, quantity)
-            self.shipped_so_far += 1
-            self.quantity -= quantity
-            return self.price * quantity
+        if not Product.validate_buyer_quantity(quantity) or quantity < 1:
+            raise ClassMethodException(
+                f"Invalid Buyer request\nMaximum Customer Request: {Product._max_customer_request}")
+        if self.shipped_so_far == self.allowed_ship_count:
+            raise ClassMethodException(
+                f"{self.name} Product, cannot be ordered more than {self.allowed_ship_count} times")
+        if quantity > self.quantity:
+            raise ClassMethodException(
+                f"Quantity larger than what exists\nAvailable amount is {self.quantity}")
+        if self.promotion is not None:
+            total_price = self.promotion.apply_promotion(self.price, quantity)
+        else:
+            total_price = self.price * quantity
+        self.shipped_so_far += 1
+        self.quantity -= quantity
+        if self.quantity == 0:
+            self.deactivate()
+        return total_price
 
     def __str__(self) -> str:
         inherited_str = super().__str__()

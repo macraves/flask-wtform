@@ -67,6 +67,9 @@ def make_an_order(stored) -> None:
         for item in chosen_products:
             item_index = item[0] - 1
             item_requested_quantity = item[1]
+            if not 0 <= item_index < len(available_products):
+                print(f"Error while making order! No product number {item[0]}")
+                continue
             product = available_products[item_index]
             try:
                 product_cost = product.buy(item_requested_quantity)
@@ -76,7 +79,7 @@ def make_an_order(stored) -> None:
                 print(
                     f"Error while making order! {clsmex}")
         if products_cost > 0:
-            print(f"\n{'='*18}\nORDER MADE, TOTAL: {product_cost}\n{'='*18}\n")
+            print(f"\n{'='*18}\nORDER MADE, TOTAL: {products_cost}\n{'='*18}\n")
     else:
         print(
             "Neither the Store object is empty, nor did the user enter appropriate data.")
@@ -168,11 +171,15 @@ Please provide a operation number: """
         10: "quit"
     }
     while True:
-        menu_choice = io.read_int_ranged(menu, min_value=1, max_value=10)
-        function = operations[menu_choice]
-        if function == "quit":
+        try:
+            menu_choice = io.read_int_ranged(menu, min_value=1, max_value=10)
+            function = operations[menu_choice]
+            if function == "quit":
+                break
+            function(test_store)
+        except EOFError:
+            print("\nInput closed, exiting.")
             break
-        function(test_store)
 
 
 def main():

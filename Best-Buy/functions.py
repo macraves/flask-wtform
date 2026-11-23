@@ -150,6 +150,8 @@ def validate_user_answer():
 
 def comparison_of_products(shop):
     "PPRICE COMPARSION"
+    if not shop.stock:
+        return "Store is empty, nothing to compare"
     func_title = "PPRICE COMPARSION"
     items_menu = get_template()
     all_products_str = "\n".join(
@@ -168,6 +170,9 @@ def comparison_of_products(shop):
 
 def instance_logic_methods(shop):
     """Comparasin, sorting"""
+    if not shop.stock:
+        print("\nStore is empty, nothing to compare\n")
+        return
     max_price = max(product.price for product in shop.stock)
     min_price = min(product.price for product in shop.stock)
     high_price_to_lowest = sorted(
