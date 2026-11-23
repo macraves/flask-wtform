@@ -10,10 +10,10 @@ import os
 # sys.path.append(project_dir)
 
 from flask import Flask, jsonify, request
-from datamanagement.JSON_Data_Manager import JsonStorage as JS
+from datamanagement.json_data_manager import JsonStorage as JS
 from user.user_instance import User, UserErrors
 
-storage = JS()
+storage = JS("movies")
 
 
 app = Flask(__name__)
