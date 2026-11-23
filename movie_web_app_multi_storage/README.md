@@ -7,13 +7,12 @@ Learning project: a Flask movie-list app where each user chooses, at signup, whe
 | Folder | What it is | Status |
 | --- | --- | --- |
 | `moviewebapp_latest/` | Flask-Login frontend, reviews (SQLite only), separate JSON REST API | The one to run |
-| `using session/` | Earlier version using only the Flask session | Partly broken, see Known limitations |
 
 All commands below are PowerShell and are run from `moviewebapp_latest/` unless stated otherwise.
 
 ## Setup
 
-`requirements.txt` pins every package the code imports (pandas is only needed by `moviewebapp_latest`, for CSV storage). I installed it into a fresh Python 3.12 virtual environment (`.python-version` pins 3.12, and CI uses it) and confirmed that `moviewebapp_latest` (frontend and API) and `using session` (frontend) import without errors; I did not run the servers for this check.
+`requirements.txt` pins every package the code imports (pandas is only needed by `moviewebapp_latest`, for CSV storage). I installed it into a fresh Python 3.12 virtual environment (`.python-version` pins 3.12, and CI uses it) and confirmed that `moviewebapp_latest` (frontend and API) imports without errors; I did not run the servers for this check.
 
 ```powershell
 python -m venv .venv
@@ -104,7 +103,7 @@ Absent or weak:
 
 ## Tests
 
-`moviewebapp_latest/tests/` holds 34 pytest tests (reviews, passwords, API errors, movie delete, `using session` import). They use temporary data files only and stub the OMDb call. From `moviewebapp_latest/`:
+`moviewebapp_latest/tests/` holds 32 pytest tests (reviews, passwords, API errors, movie delete). They use temporary data files only and stub the OMDb call. From `moviewebapp_latest/`:
 
 ```powershell
 pip install -r ..\requirements.txt pytest
@@ -120,10 +119,6 @@ GitHub Actions runs them on every pull request and on pushes to `main` (the `mov
 - The API supports SQLite users only; the API and the frontend both default to port 5000.
 - The storage type is typed free-form at signup and sign-in. A typo at signup shows a validation message; at sign-in it raises a 500 error page.
 - In JSON and CSV storage, ids come from list lengths (movies in JSON, users in CSV), so deleting and then adding can create duplicate ids; in CSV storage a duplicate user id then makes `get_all_users` drop one of the two users.
-- `using session/` is an older variant:
-  - `backend/user_app.py` now imports (it used the wrong module name and called `JsonStorage()` with no argument), but it is still broken beyond that: `/users` raises a `TypeError` once any user exists, and `/add_user` calls `User.get_id`, which does not exist.
-  - Its frontend (`python main.py` from that folder) runs. SQLite and JSON signup and sign-in worked here (sign-in uses the `name` field); CSV signup returns HTTP 500 because `CsvStorage` has no `add_new_user`, and CSV sign-in returns 500 too.
-  - It stores passwords in plain text: the SQLite `users.password` column, the JSON storage file and `registry/registry.json`.
 
 ## License
 
