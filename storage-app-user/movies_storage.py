@@ -1,4 +1,5 @@
 """Methods for stored objects in a file."""
+import html
 import os
 from urllib.parse import urlencode
 
@@ -163,10 +164,9 @@ def replace_in_html(user, replacement):
     with open(user.get_html_index(), "r", encoding="utf-8") as current_html:
         with open(user.get_updated_path(), "w", encoding="utf-8") as new_html:
             source_html = current_html.read()
+            owner = html.escape(user.user_name)
             updated_html = source_html.replace(
-                "My Movie App", "RAVEN MACIUS")
-            updated_html = updated_html.replace(
-                "__TEMPLATE_TITLE__", "MY MOVIE DATABASE")
+                "__TEMPLATE_TITLE__", f"{owner}'s Movie Database")
             updated_html = updated_html.replace(
                 "__TEMPLATE_MOVIE_GRID__", replacement)
             new_html.write(updated_html)
