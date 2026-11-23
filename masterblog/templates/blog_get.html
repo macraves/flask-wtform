@@ -7,15 +7,25 @@
 		{% if blog.get("like")%}
 		<p class="card-text">{{ blog.like }}</p>
 		{% endif %}
-		<a href="{{ url_for('blog.blog_like', idx=blog.id) }}" class="btn btn-primary"
-			>Like</a
+		<form
+			method="POST"
+			action="{{ url_for('blog.blog_like', idx=blog.id) }}"
+			class="d-inline"
 		>
+			<input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+			<button type="submit" class="btn btn-primary">Like</button>
+		</form>
 		<a href="{{ url_for('blog.blog_update', idx=blog.id) }}" class="btn btn-warning"
 			>Update</a
 		>
-		<a href="{{ url_for('blog.blog_delete',idx=blog.id) }}" class="btn btn-danger"
-			>Delete</a
+		<form
+			method="POST"
+			action="{{ url_for('blog.blog_delete', idx=blog.id) }}"
+			class="d-inline"
 		>
+			<input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+			<button type="submit" class="btn btn-danger">Delete</button>
+		</form>
 	</div>
 </div>
 {% endblock %}

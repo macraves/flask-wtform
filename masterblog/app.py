@@ -5,6 +5,7 @@ import secrets
 import warnings
 
 from flask import Flask
+from flask_wtf.csrf import CSRFProtect
 from blogs_routes import posts
 
 
@@ -14,6 +15,7 @@ if not app.config["SECRET_KEY"]:
     warnings.warn("SECRET_KEY is not set; using a random key, sessions reset on restart.")
     app.config["SECRET_KEY"] = secrets.token_hex(32)
 
+csrf = CSRFProtect(app)
 app.register_blueprint(posts, url_prefix="/")
 
 
