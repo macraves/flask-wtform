@@ -6,10 +6,13 @@ from dotenv import load_dotenv
 load_dotenv()
 
 # pylint: disable=wrong-import-position
-from flask import Flask, render_template
+from flask import Flask, flash, redirect, render_template, url_for
 from flask_migrate import Migrate
 from flask_login import LoginManager
 from flask_ckeditor import CKEditor
+from flask_wtf.csrf import CSRFError, CSRFProtect
+from markupsafe import Markup
+import nh3
 from data_models import datetime, db, MYSQL_URI, Author, Book, Post, User, os
 from allwebforms import SearchForm
 from author.aroutes import author_bp
@@ -27,12 +30,29 @@ DATABASE_URI = os.environ.get("SQLALCHEMY_DATABASE_URI") or MYSQL_URI
 if DATABASE_URI.startswith("postgres://"):
     DATABASE_URI = DATABASE_URI.replace("postgres://", "postgresql://", 1)
 
+
+def sanitize_html(value):
+    """Strip scripts, event handlers and unsafe URLs from user-supplied HTML.
+
+    Args:
+        value (str | None): HTML produced by the rich-text editor.
+
+    Returns:
+        Markup: Cleaned HTML that is safe to render.
+    """
+    return Markup(nh3.clean(value or ""))
+
+
 app = Flask(__name__)
 app.config["SQLALCHEMY_DATABASE_URI"] = DATABASE_URI
 app.config["SECRET_KEY"] = SECRET_KEY
 
 # CKEditor adding instance
 ckeditor = CKEditor(app)
+
+# Every POST must carry a CSRF token (forms use hidden_tag or csrf_token())
+csrf = CSRFProtect(app)
+app.jinja_env.filters["sanitize_html"] = sanitize_html
 
 # Initialize the app with the extension
 db.init_app(app)
@@ -84,6 +104,13 @@ def index():
 def get_date():
     """Get date."""
     return {"date": datetime.now()}
+
+
+@app.errorhandler(CSRFError)
+def csrf_error(_):
+    """Explain an expired or missing CSRF token instead of a bare 400 page."""
+    flash("Your form expired or was not submitted correctly. Please try again.")
+    return redirect(url_for("index"))
 
 
 @app.errorhandler(404)

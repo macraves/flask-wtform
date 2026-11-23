@@ -1,4 +1,4 @@
-{% extends 'base.html' %}{% block content %}
+{% extends 'base.html' %}{% from "_macros.html" import delete_button, delete_submit %}{% block content %}
 <div class="d-flex container">
 	<h1>ALL BOOKS</h1>
 	<div class="dropdown">
@@ -62,11 +62,7 @@
 								class="btn btn-primary"
 								>Update</a
 							>
-							<a
-								href="{{url_for('book.book_delete', book_id=book.id)}}"
-								class="btn btn-danger"
-								>Delete</a
-							>
+							{{ delete_button(url_for('book.book_delete', book_id=book.id), "btn btn-danger") }}
 						</div>
 						{% endif %}
 					</div>

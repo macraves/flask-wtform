@@ -1,4 +1,5 @@
 """Author related routes."""
+from markupsafe import Markup
 from flask import Blueprint, flash, redirect, render_template, url_for
 from flask_login import current_user, login_required
 from permissions import is_admin
@@ -58,7 +59,7 @@ def author_add():
             )
             db.session.add(author)
             db.session.commit()
-        flash(f"<strong>{form.name.data}</strong> has been added")
+        flash(Markup("<strong>{}</strong> has been added").format(form.name.data))
         reset_author_form(form)
         return redirect("/")
     else:
@@ -115,7 +116,7 @@ def authors_all():
 
 
 # Delete author
-@author_bp.route("/delete/<int:author_id>/", methods=["GET", "POST"])
+@author_bp.route("/delete/<int:author_id>/", methods=["POST"])
 @login_required
 def author_delete(author_id):
     """Delete author, Only authorized user can delete author."""
@@ -130,7 +131,7 @@ def author_delete(author_id):
         for book in books_to_delete:
             db.session.delete(book)
         flash(
-            f"<strong>author ID: {author.id}</strong> and associated books have been deleted"
+            Markup("<strong>author ID: {}</strong> and associated books have been deleted").format(author.id)
         )
         # then author
         try:

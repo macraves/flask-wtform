@@ -1,4 +1,5 @@
 """user related routes."""
+from markupsafe import Markup
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required, login_user, logout_user
 from permissions import can_modify, is_admin
@@ -81,7 +82,7 @@ def dashboard():
         user.about_user = request.form.get("about_user").strip()
         try:
             db.session.commit()
-            flash(f"<strong>{form.username.data}</strong> has been updated")
+            flash(Markup("<strong>{}</strong> has been updated").format(form.username.data))
         except UserError:
             flash("Operation failed during the update process")
     return render_template(
@@ -89,7 +90,7 @@ def dashboard():
     )
 
 
-@user_bp.route("/logout")
+@user_bp.route("/logout", methods=["POST"])
 @login_required
 def logout():
     """Logout route for the users."""
@@ -133,7 +134,7 @@ def user_add():
         try:
             db.session.add(user)
             db.session.commit()
-            flash(f"<strong>{form.username.data}</strong> has been added")
+            flash(Markup("<strong>{}</strong> has been added").format(form.username.data))
             reset_user_form(form)
         except UserError:
             flash("Operation failed during the add process")
@@ -160,7 +161,7 @@ def user_update(user_id):
         user.about_user = request.form.get("about_user").strip()
         try:
             db.session.commit()
-            flash(f"<strong>{form.username.data}</strong> has been updated")
+            flash(Markup("<strong>{}</strong> has been updated").format(form.username.data))
             reset_user_form(form)
         except UserError:
             flash("Operation failed during the update process")
@@ -170,7 +171,7 @@ def user_update(user_id):
     )
 
 
-@user_bp.route("/user/delete/<int:user_id>/", methods=["GET", "POST"])
+@user_bp.route("/user/delete/<int:user_id>/", methods=["POST"])
 @login_required
 def user_delete(user_id):
     """Delete user."""
@@ -184,7 +185,7 @@ def user_delete(user_id):
     try:
         db.session.delete(user)
         db.session.commit()
-        flash(f"<strong>{user.username}</strong> has been deleted")
+        flash(Markup("<strong>{}</strong> has been deleted").format(user.username))
     except UserError:
         flash("Operation failed during the delete process")
     return redirect("/users")

@@ -1,0 +1,20 @@
+{# Delete controls: deletes are POST-only and carry the CSRF token. #}
+{% macro delete_button(url, css="btn btn-danger") -%}
+<form method="post" action="{{ url }}" class="d-inline" onsubmit="return confirm('Delete permanently?');">
+	<input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+	<button type="submit" class="{{ css }}">Delete</button>
+</form>
+{%- endmacro %}
+
+{# Use inside an existing POST form; reuses that form's CSRF token. #}
+{% macro delete_submit(url, css="btn btn-danger") -%}
+<button type="submit" formaction="{{ url }}" formnovalidate class="{{ css }}" onclick="return confirm('Delete permanently?');">Delete</button>
+{%- endmacro %}
+
+{# Small POST form for state-changing actions that are not deletes (e.g. logout). #}
+{% macro post_button(url, label, css="btn btn-outline-secondary") -%}
+<form method="post" action="{{ url }}" class="d-inline">
+	<input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+	<button type="submit" class="{{ css }}">{{ label }}</button>
+</form>
+{%- endmacro %}

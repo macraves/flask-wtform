@@ -1,4 +1,5 @@
 """post related routes."""
+from markupsafe import Markup
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 from permissions import can_modify
@@ -75,7 +76,7 @@ def post_add():
         try:
             db.session.add(post)
             db.session.commit()
-            flash(f"<strong>{form.title.data}</strong> has been added")
+            flash(Markup("<strong>{}</strong> has been added").format(form.title.data))
             reset_post_form(form)
         except PostError:
             flash("Operation failed during the add process")
@@ -101,7 +102,7 @@ def post_update(post_id):
         post.content = request.form.get("content").strip()
         try:
             db.session.commit()
-            flash(f"<strong>Post ID: {post.id}</strong> has been updated")
+            flash(Markup("<strong>Post ID: {}</strong> has been updated").format(post.id))
             reset_post_form(form)
         except PostError:
             flash("Operation failed during the update process")
@@ -111,7 +112,7 @@ def post_update(post_id):
     )
 
 
-@post_bp.route("/post/delete/<int:post_id>/", methods=["GET", "POST"])
+@post_bp.route("/post/delete/<int:post_id>/", methods=["POST"])
 @login_required
 def post_delete(post_id):
     """Delete post."""
@@ -122,7 +123,7 @@ def post_delete(post_id):
     if not can_modify(post.author_id):
         flash("You can only delete your own posts")
         return redirect(url_for("post.posts_all"))
-    flash(f"<strong>Post ID: {post.id}</strong> has been deleted")
+    flash(Markup("<strong>Post ID: {}</strong> has been deleted").format(post.id))
     try:
         db.session.delete(post)
         db.session.commit()

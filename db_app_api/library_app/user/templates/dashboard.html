@@ -1,4 +1,4 @@
-{% extends 'base.html' %}{% block content %}
+{% extends 'base.html' %}{% from "_macros.html" import delete_button, delete_submit, post_button %}{% block content %}
 <div class="card">
 	<div class="card-header">
 		<h4><strong>{{ current_user.name}}</strong></h4>
@@ -15,12 +15,8 @@
 				class="btn btn-outline-primary"
 				>Update</a
 			>
-			<a href="{{ url_for('user.logout')}}" class="btn btn-outline-secondary">Logout</a>
-			<a
-				href="{{ url_for('user.user_delete', user_id=current_user.id)}}"
-				class="btn btn-outline-danger"
-				>Delete</a
-			>
+			{{ post_button(url_for('user.logout'), "Logout") }}
+			{{ delete_button(url_for('user.user_delete', user_id=current_user.id), "btn btn-outline-danger") }}
 		</div>
 	</div>
 </div>
@@ -50,9 +46,7 @@
 			<div>
 				<a href="{{url_for('user.users_all')}}" class="btn btn-secondary">Back</a>
 				{{ form.submit(class="btn btn-primary") }}
-				<a href="{{url_for('user.user_delete', user_id=user_id)}}" class="btn btn-danger"
-					>Delete</a
-				>
+				{{ delete_submit(url_for('user.user_delete', user_id=user_id), "btn btn-danger") }}
 			</div>
 		</form>
 	</div>

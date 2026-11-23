@@ -1,4 +1,5 @@
 """book related routes."""
+from markupsafe import Markup
 from flask import Blueprint, flash, redirect, render_template, request, url_for
 from flask_login import current_user, login_required
 from permissions import can_modify
@@ -118,7 +119,7 @@ def book_add():
         try:
             db.session.add(book)
             db.session.commit()
-            flash(f"<strong>{form.title.data}</strong> has been added")
+            flash(Markup("<strong>{}</strong> has been added").format(form.title.data))
             reset_book_form(form)
         except BookError:
             flash("Operation failed during the add process")
@@ -144,7 +145,7 @@ def book_update(book_id):
         book.condition = request.form.get("condition").lower().strip()
         try:
             db.session.commit()
-            flash(f"<strong>book ID: {book.id}</strong> has been updated")
+            flash(Markup("<strong>book ID: {}</strong> has been updated").format(book.id))
             reset_book_form(form)
         except BookError:
             flash("Operation failed during the update process")
@@ -154,7 +155,7 @@ def book_update(book_id):
     )
 
 
-@book_bp.route("/book/delete/<int:book_id>/", methods=["GET", "POST"])
+@book_bp.route("/book/delete/<int:book_id>/", methods=["POST"])
 @login_required
 def book_delete(book_id):
     """Delete book."""
@@ -165,7 +166,7 @@ def book_delete(book_id):
     if not can_modify(book.user_id):
         flash("You can only delete your own books")
         return redirect(url_for("book.books_all"))
-    flash(f"<strong>book ID: {book.id}</strong> has been deleted")
+    flash(Markup("<strong>book ID: {}</strong> has been deleted").format(book.id))
     try:
         db.session.delete(book)
         db.session.commit()

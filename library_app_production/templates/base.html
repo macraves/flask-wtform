@@ -21,7 +21,7 @@
 		<a href="{{url_for('user.login')}}"><p><h3><strong>Sign in please</strong></h3></p></a>
 		{% endif %} {% for message in get_flashed_messages() %}
 		<div class="alert alert-warning alert-dismissible fade show" role="alert">
-			{{ message | safe }}.
+			{{ message }}.
 			<button
 				type="button"
 				class="btn-close"
