@@ -102,9 +102,6 @@ title; CSV files have the header `Title,Year,imdbRating,Poster`.
 
 - The password is read with `input()`, so it is echoed on screen.
 - There are no tests.
-- The generated page has a hard-coded title and header: `replace_in_html` in
-  `movies_storage.py` replaces `My Movie App` with `RAVEN MACIUS` and
-  `__TEMPLATE_TITLE__` with `MY MOVIE DATABASE`.
 - Titles and poster URLs from OMDb are inserted into the generated HTML without
   escaping, and the poster is written as an unquoted `src=` value.
 - If OMDb returns `N/A` as the rating, Add fails in `format_movie_data`
