@@ -13,18 +13,6 @@ from book.book_api import find_cover_url
 book_bp = Blueprint("book", __name__, url_prefix="/books", template_folder="templates")
 
 
-class BookError(Exception):
-    """book error."""
-
-    def __init__(self, message):
-        """Store the error message.
-
-        Args:
-            message (str): Error description.
-        """
-        self.message = message
-
-
 def reset_book_form(form):
     """Reset pos form."""
     form.title.data = ""
@@ -44,8 +32,8 @@ def search():
         flash("Enter a search term")
         return redirect(url_for("index"))
     searched = form.searched.data.lower().strip()
-    books = Book.query.filter(func.lower(Book.title).like(f"%{searched}%")).all()
-    authors = Author.query.filter(func.lower(Author.name).like(f"%{searched}%")).all()
+    books = Book.query.filter(func.lower(Book.title).contains(searched, autoescape=True)).all()
+    authors = Author.query.filter(func.lower(Author.name).contains(searched, autoescape=True)).all()
     return render_template(
         "search.html", searched=searched, books=books, authors=authors
     )
@@ -54,7 +42,7 @@ def search():
 @book_bp.route("/get_book/<int:book_id>/")
 def get_book(book_id):
     """Get book."""
-    book = Book.query.get_or_404(book_id)
+    book = db.get_or_404(Book, book_id)
     if book is None:
         flash("book not found")
         return redirect("/")
@@ -117,8 +105,6 @@ def book_add():
             db.session.commit()
             flash(Markup("<strong>{}</strong> has been added").format(form.title.data))
             form = reset_book_form(form)
-        except BookError:
-            flash("Operation failed during the add process")
         except ValueError:
             flash("Rating must be float between 0 and 5.")
     elif request.method == "POST":
@@ -134,7 +120,7 @@ def book_update(book_id):
     Only title, publication year, rating and condition can change, so the ISBN
     and author are not part of the update form.
     """
-    book = Book.query.get_or_404(book_id)
+    book = db.get_or_404(Book, book_id)
     if book is None:
         flash("book not found")
         return redirect("/books/all")
@@ -147,11 +133,8 @@ def book_update(book_id):
         book.publication_year = form.publication_year.data
         book.rating = form.rating.data if form.rating.data is not None else 0
         book.condition = (form.condition.data or "").lower().strip()
-        try:
-            db.session.commit()
-            flash(Markup("<strong>book ID: {}</strong> has been updated").format(book.id))
-        except BookError:
-            flash("Operation failed during the update process")
+        db.session.commit()
+        flash(Markup("<strong>book ID: {}</strong> has been updated").format(book.id))
         return redirect(url_for("book.books_all"))
     if request.method == "POST":
         flash_form_errors(form)
@@ -164,7 +147,7 @@ def book_update(book_id):
 @login_required
 def book_delete(book_id):
     """Delete book."""
-    book = Book.query.get_or_404(book_id)
+    book = db.get_or_404(Book, book_id)
     if book is None:
         flash("book not found")
         return redirect("/books")
@@ -172,9 +155,6 @@ def book_delete(book_id):
         flash("You can only delete your own books")
         return redirect(url_for("book.books_all"))
     flash(Markup("<strong>book ID: {}</strong> has been deleted").format(book.id))
-    try:
-        db.session.delete(book)
-        db.session.commit()
-    except BookError:
-        flash("Operation failed during the delete process")
+    db.session.delete(book)
+    db.session.commit()
     return redirect("/books")

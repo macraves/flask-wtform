@@ -260,3 +260,30 @@ def test_last_admin_cannot_be_deleted(as_user, ids, app):
     as_user("admin").post(f"/users/user/delete/{ids['admin']}/")
     with app.app_context():
         assert db.session.get(User, ids["admin"]) is not None
+
+
+# 2. LIKE wildcards in search are literal characters
+def test_book_search_percent_is_literal(client):
+    """A lone ``%`` matches nothing instead of every book and author."""
+    html = client.post("/books/search", data={"searched": "%"}).get_data(True)
+    assert "Dispossessed" not in html
+    assert "Ursula" not in html
+
+
+def test_book_search_underscore_is_literal(client):
+    """``_`` no longer stands in for one arbitrary character."""
+    html = client.post("/books/search", data={"searched": "d_spossessed"}).get_data(True)
+    assert "Dispossessed" not in html
+
+
+def test_book_search_plain_term_still_matches(client):
+    """Escaping does not break ordinary substring search."""
+    html = client.post("/books/search", data={"searched": "dispos"}).get_data(True)
+    assert "Dispossessed" in html
+
+
+def test_post_search_wildcards_are_literal(client):
+    """The post search treats ``%`` and ``_`` literally too."""
+    assert "Hello" not in client.post("/posts/search", data={"searched": "%"}).get_data(True)
+    assert "Hello" not in client.post("/posts/search", data={"searched": "h_"}).get_data(True)
+    assert "Hello" in client.post("/posts/search", data={"searched": "hi"}).get_data(True)

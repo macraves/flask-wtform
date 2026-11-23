@@ -10,18 +10,6 @@ from data_models import db, Post
 post_bp = Blueprint("post", __name__, url_prefix="/posts", template_folder="templates")
 
 
-class PostError(Exception):
-    """Post error."""
-
-    def __init__(self, message):
-        """Store the error message.
-
-        Args:
-            message (str): Error description.
-        """
-        self.message = message
-
-
 def reset_post_form(form):
     """Reset pos form."""
     form.title.data = ""
@@ -38,7 +26,7 @@ def search():
         flash("Enter a search term")
         return redirect(url_for("index"))
     searched = form.searched.data
-    posts = Post.query.filter(Post.content.like("%" + searched + "%"))
+    posts = Post.query.filter(Post.content.contains(searched, autoescape=True))
     posts = posts.order_by(Post.title).all()
     return render_template("post_search.html", searched=searched, posts=posts)
 
@@ -46,7 +34,7 @@ def search():
 @post_bp.route("/get_post/<int:post_id>/")
 def get_post(post_id):
     """Get post."""
-    post = Post.query.get_or_404(post_id)
+    post = db.get_or_404(Post, post_id)
     if post is None:
         flash("post not found")
         return redirect("/")
@@ -75,13 +63,10 @@ def post_add():
             content=form.content.data.strip(),
             author_id=current_user.id,
         )
-        try:
-            db.session.add(post)
-            db.session.commit()
-            flash(Markup("<strong>{}</strong> has been added").format(form.title.data))
-            reset_post_form(form)
-        except PostError:
-            flash("Operation failed during the add process")
+        db.session.add(post)
+        db.session.commit()
+        flash(Markup("<strong>{}</strong> has been added").format(form.title.data))
+        reset_post_form(form)
         return redirect("/posts")
     if request.method == "POST":
         flash_form_errors(form)
@@ -92,7 +77,7 @@ def post_add():
 @login_required
 def post_update(post_id):
     """Update post."""
-    post = Post.query.get_or_404(post_id)
+    post = db.get_or_404(Post, post_id)
     if post is None:
         flash("post not found")
         return redirect("/posts/all")
@@ -104,11 +89,8 @@ def post_update(post_id):
         post.title = form.title.data.title().strip()
         post.subtitle = form.subtitle.data.strip()
         post.content = form.content.data.strip()
-        try:
-            db.session.commit()
-            flash(Markup("<strong>Post ID: {}</strong> has been updated").format(post.id))
-        except PostError:
-            flash("Operation failed during the update process")
+        db.session.commit()
+        flash(Markup("<strong>Post ID: {}</strong> has been updated").format(post.id))
         return redirect(url_for("post.posts_all"))
     if request.method == "POST":
         flash_form_errors(form)
@@ -121,7 +103,7 @@ def post_update(post_id):
 @login_required
 def post_delete(post_id):
     """Delete post."""
-    post = Post.query.get_or_404(post_id)
+    post = db.get_or_404(Post, post_id)
     if post is None:
         flash("post not found")
         return redirect("/posts")
@@ -129,9 +111,6 @@ def post_delete(post_id):
         flash("You can only delete your own posts")
         return redirect(url_for("post.posts_all"))
     flash(Markup("<strong>Post ID: {}</strong> has been deleted").format(post.id))
-    try:
-        db.session.delete(post)
-        db.session.commit()
-    except PostError:
-        flash("Operation failed during the delete process")
+    db.session.delete(post)
+    db.session.commit()
     return redirect("/posts")
