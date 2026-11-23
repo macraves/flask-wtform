@@ -33,7 +33,7 @@ class SqliteStorage(DMI):
         """Uses ORM relationship to create Review instance"""
         content = form.content.data
         movie = self.get_target_movie(user_id=user.id, movie_id=movie_id)
-        review = Review(user_id=movie.adder.id, movie_id=movie.id, review_text=content)
+        review = Review(user_id=movie.user.id, movie_id=movie.id, review_text=content)
 
         db.session.add(review)
         db.session.commit()

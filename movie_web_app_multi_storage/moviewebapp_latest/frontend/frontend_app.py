@@ -6,6 +6,7 @@ import warnings
 from dotenv import load_dotenv
 from flask import abort, Flask, flash, render_template, redirect, request, url_for
 from flask_migrate import Migrate
+from flask_wtf.csrf import CSRFProtect
 from flask_login import (
     login_user,
     LoginManager,
@@ -34,6 +35,8 @@ if not app.secret_key:
     warnings.warn("SECRET_KEY is not set; using a random key, sessions reset on restart.")
     app.secret_key = secrets.token_hex(32)
 app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{ffasm.SQLITE_STORAGE_PATH}"
+
+csrf = CSRFProtect(app)
 
 db.init_app(app)
 with app.app_context():
@@ -80,10 +83,13 @@ def load_user(user_id):
 
 
 @app.route("/add_review/movie/<int:movie_id>", methods=["GET", "POST"])
+@login_required
 def add_review(movie_id):
     """Routes only accept if chosen storage SqliteStorage type."""
-    storage_type = ffasm.session["user"].get("storage")
     user, storage = ffasm.get_user_and_storage()
+    if not user:
+        return redirect(url_for("signin"))
+    storage_type = user.get("storage")
     # to get User instance as db.Model
     user = storage.find_user(user_id=user.get("id"))
     # Only sqlite type storage can add review
@@ -105,9 +111,13 @@ def add_review(movie_id):
 
 
 @app.route("/all-reviews")
+@login_required
 def all_reviews():
-    """Display all record in reviews table."""
+    """Display all record in reviews table (reviews exist in SQLite only)."""
     _, storage = ffasm.get_user_and_storage()
+    if not hasattr(storage, "all_revies"):
+        flash("Reviews are only available for SQLite storage users.")
+        return render_template("all_reviews.html", reviews=[])
     reviews = storage.all_revies()
     return render_template("all_reviews.html", reviews=reviews)
 
@@ -314,10 +324,10 @@ def update_movie(user_id, movie_id):
     return render_template("update_movie.html", movie=movie, form=form, user_id=user_id)
 
 
-@app.route("/users/<int:user_id>/delete_movie/<int:movie_id>")
+@app.route("/users/<int:user_id>/delete_movie/<int:movie_id>", methods=["POST"])
 @login_required
 def delete_movie(user_id, movie_id):
-    """Delete the selected movie from the user's list of favorite movies."""
+    """Delete the selected movie (POST only, CSRF checked by CSRFProtect)."""
     require_owner(user_id)
     _, storage = ffasm.get_user_and_storage()
     try:

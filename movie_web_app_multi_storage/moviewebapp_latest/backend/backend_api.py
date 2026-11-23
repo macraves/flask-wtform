@@ -2,6 +2,7 @@
 import os
 import secrets
 import warnings
+from types import SimpleNamespace
 
 from dotenv import load_dotenv
 from flask import Flask, jsonify, request
@@ -15,7 +16,6 @@ from flask_login import (
 from datamanagement.sqlite_data_manager import db
 import frontend.forms_and_session_methods as ffasm
 from backend.request_movie import extract_movie_data, RequestErrors
-from frontend.movie_wtf import UserForm
 
 load_dotenv()
 
@@ -94,10 +94,23 @@ def api_list_users():
     return jsonify(users_dict)
 
 
+def _password_from(data):
+    """Return the password from a JSON body, or None when absent or not text.
+
+    Args:
+        data (object): Parsed JSON body.
+
+    Returns:
+        str | None: The password string when usable.
+    """
+    password = data.get("password") if isinstance(data, dict) else None
+    return password if isinstance(password, str) and password else None
+
+
 @app.route("/api/user-update/<int:user_id>", methods=["PUT"])
 @login_required
 def api_user_update(user_id):
-    """Endpoint to user update."""
+    """Endpoint to user update (name, username, email); password must be current."""
     if current_user.id != user_id:
         return jsonify({"error": "forbidden"}), 403
     _, storage = ffasm.get_user_and_storage()
@@ -110,33 +123,53 @@ def api_user_update(user_id):
     unknown = set(data) - USER_UPDATE_FIELDS
     if unknown:
         return jsonify({"error": f"Unsupported fields: {sorted(unknown)}"}), 400
-    for key in data:
-        if "password" in data and data.get(key, None) is not None:
-            continue
-        if "password" not in data:
-            return jsonify({"warning": "Password not given"})
-        else:
-            setattr(user, key, data[key].strip())
-    form = UserForm(obj=user)
+    password = _password_from(data)
+    if password is None:
+        return jsonify({"error": "Current password is required"}), 400
+    changes = {key: value for key, value in data.items() if key != "password"}
+    if not all(isinstance(value, str) and value.strip() for value in changes.values()):
+        return jsonify({"error": "Fields must be non-empty strings"}), 400
+    if not storage.check_password(user_id=user_id, password=password):
+        return jsonify({"error": "Invalid password"}), 403
+    form = SimpleNamespace(
+        data={
+            "name": user.name,
+            "username": user.username,
+            "email": user.email,
+            "password": password,
+            **{key: value.strip() for key, value in changes.items()},
+        }
+    )
     try:
-        storage.update_user_info(user_id=user.id, form=form)
+        storage.update_user_info(user_id=user_id, form=form)
         return jsonify({"user": "user info updated successufully"})
     except ffasm.IMPORTED_ERRORS as update_user:
-        return jsonify({"warning": f"{update_user}"}), 404
+        db.session.rollback()
+        return jsonify({"error": f"{update_user}"}), 409
 
 
 @app.route("/api/user-delete/<int:user_id>", methods=["DELETE"])
 @login_required
 def api_user_delete(user_id):
-    """Endpoint to delete user."""
+    """Endpoint to delete user; the JSON body must hold the current password."""
     if current_user.id != user_id:
         return jsonify({"error": "forbidden"}), 403
     _, storage = ffasm.get_user_and_storage()
     user = storage.find_user(user_id=user_id)
-    form = UserForm(obj=user)
     if user is None:
         return jsonify({"warning": "User does not exitst"}), 404
-    storage.delete_user_info(user_id=user_id, form=form)
+    password = _password_from(request.get_json(silent=True))
+    if password is None:
+        return jsonify({"error": "Current password is required"}), 400
+    if not storage.check_password(user_id=user_id, password=password):
+        return jsonify({"error": "Invalid password"}), 403
+    try:
+        storage.delete_user_info(
+            user_id=user_id, form=SimpleNamespace(data={"password": password})
+        )
+    except ffasm.IMPORTED_ERRORS as delete_error:
+        db.session.rollback()
+        return jsonify({"error": f"{delete_error}"}), 400
     users_dict = get_users(storage)
     return jsonify({"message": "User deleted successfuly", "users": users_dict})
 

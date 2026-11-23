@@ -88,7 +88,7 @@ class User(UserMixin):
         registration = {
             self.userdata["username"]: {
                 "name": self.userdata["name"],
-                "password": self.userdata["password"],
+                "password": generate_password_hash(str(self.userdata["password"])),
             }
         }
         registration[self.userdata["username"]]["id"] = user_id

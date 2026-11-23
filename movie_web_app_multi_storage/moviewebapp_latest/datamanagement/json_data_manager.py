@@ -1,9 +1,13 @@
 """This module is used to store movies in a json file."""
 
+import hmac
 import json
-from werkzeug.security import check_password_hash
+from werkzeug.security import check_password_hash, generate_password_hash
 from datamanagement.storage_inheritance import os, DataManagmentInterface as DMI
 from user.user_instance import User
+
+
+HASH_PREFIXES = ("scrypt:", "pbkdf2:")
 
 
 class JsonStorageErrors(Exception):
@@ -46,11 +50,19 @@ class JsonStorage(DMI):
     def check_password(self, user_id, password) -> bool:
         """First find user by name
         Calls User Instance to use its verify password method"""
-        data = self._read_file().get("users")
-        user = data.get(str(user_id), None)
-        if user is not None:
-            return check_password_hash(user.get("password"), password)
-        return False
+        data = self._read_file()
+        user = data.get("users").get(str(user_id), None)
+        if user is None:
+            return False
+        stored = user.get("password") or ""
+        if not stored.startswith(HASH_PREFIXES):
+            # Legacy plaintext entry: verify, then re-hash on success.
+            if not hmac.compare_digest(stored.encode(), str(password).encode()):
+                return False
+            user["password"] = generate_password_hash(str(password))
+            self._write_file(data)
+            return True
+        return check_password_hash(stored, str(password))
 
     def find_user(self, username: str = None, user_id: int = None) -> User | None:
         """Find user by either name or user ID info then

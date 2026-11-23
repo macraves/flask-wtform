@@ -1,5 +1,5 @@
 {% extends "base.html" %} {% block content %}
-<h2>ID : {{ movie.adder.id }}, {{ movie.adder.name }} Movie Info:</h2>
+<h2>ID : {{ movie.user.id }}, {{ movie.user.name }} Movie Info:</h2>
 <a href="{{ url_for('dashboard')}}" class="btn btn-outline-secondary">Back</a>
 {% if movie %}
 <div class="row mt-5 shadow">
@@ -16,15 +16,18 @@
 			<div class="card-text">{{ movie.Year }}</div>
 			<div class="card-text">Rated {{ movie.imdbRating }}</div>
 			<a
-				href="{{ url_for('update_movie',user_id=movie.adder.id,movie_id=movie.id)}}"
+				href="{{ url_for('update_movie',user_id=movie.user.id,movie_id=movie.id)}}"
 				class="btn btn-primary"
 				>Update</a
 			>
-			<a
-				href="{{ url_for('delete_movie',user_id=movie.adder.id,movie_id=movie.id) }}"
-				class="btn btn-danger"
-				>Delete</a
+			<form
+				method="POST"
+				action="{{ url_for('delete_movie', user_id=movie.user.id, movie_id=movie.id) }}"
+				class="d-inline"
 			>
+				<input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+				<button type="submit" class="btn btn-danger">Delete</button>
+			</form>
 		</div>
 	</div>
 	<div class="col-8">
