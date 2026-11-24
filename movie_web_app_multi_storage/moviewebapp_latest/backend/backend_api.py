@@ -27,6 +27,8 @@ if not app.secret_key:
     warnings.warn("SECRET_KEY is not set; using a random key, sessions reset on restart.")
     app.secret_key = secrets.token_hex(32)
 app.config["SQLALCHEMY_DATABASE_URI"] = f"sqlite:///{ffasm.SQLITE_STORAGE_PATH}"
+app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_HTTPONLY"] = True
 
 db.init_app(app)
 with app.app_context():
@@ -56,10 +58,20 @@ def load_user(user_id):
 @app.route("/api/login", methods=["POST"])
 def api_login():
     """Endpoint to log in a user."""
-    data = request.get_json()
-    username = data.get("username").strip()
+    data = request.get_json(silent=True)
+    if not isinstance(data, dict):
+        return jsonify({"error": "Request body must be a JSON object"}), 400
+    username = data.get("username")
     password = data.get("password")
-    storage_type = data.get("storage").strip()
+    storage_type = data.get("storage")
+    if (
+        not isinstance(username, str)
+        or not isinstance(password, str)
+        or not isinstance(storage_type, str)
+    ):
+        return jsonify({"error": "username, password and storage must be strings"}), 400
+    username = username.strip()
+    storage_type = storage_type.strip()
     if storage_type != "sqlite":
         return jsonify({"error": "not supported storage type"})
     storage = ffasm.get_storage_class(storage_text=storage_type)

@@ -142,6 +142,9 @@ def index():
 @app.route("/signup", methods=["GET", "POST"])
 def signup():
     """Html page tester."""
+    if request.method == "POST" and current_user.is_authenticated:
+        logout_user()
+        ffasm.session.pop("user", None)
     valid_storage_extensions = ["csv", "json", "sqlite"]
     form = UserForm()
     data = {}
@@ -194,10 +197,10 @@ def signin():
     return render_template("signin.html", title="Sign In", form=form)
 
 
-@app.route("/signout")
+@app.route("/signout", methods=["POST"])
 @login_required
 def signout():
-    """Sign out the user."""
+    """Sign out the user through a CSRF-protected POST request."""
     logout_user()
     ffasm.clean_session_keys()
     return redirect(url_for("index"))
@@ -303,7 +306,8 @@ def user_delete(user_id):
 def list_users():
     """Render the users page."""
     user, storage = ffasm.get_user_and_storage()
-    users = storage.get_all_users()
+    current_user_record = storage.find_user(user_id=user.get("id"))
+    users = [current_user_record] if current_user_record is not None else []
     return render_template("users.html", user=user, users=users)
 
 
@@ -339,9 +343,11 @@ def delete_movie(user_id, movie_id):
 
 
 @app.route("/user/<int:user_id>/movie/<int:movie_id>/info")
-@login_required
 def movie_info(user_id, movie_id):
     """Individual Movie Page."""
+    if not current_user.is_authenticated:
+        abort(403, description="You are not allowed")
+    require_owner(user_id)
     _, storage = ffasm.get_user_and_storage()
     try:
         movie = storage.get_target_movie(user_id, movie_id)

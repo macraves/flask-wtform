@@ -48,8 +48,11 @@ def test_all_reviews_ok_for_sqlite_user(client):
 
 def test_all_reviews_json_and_csv_users_get_message_not_500(client):
     """JSON and CSV users get a clear message because reviews are SQLite only."""
-    for storage in ("json", "csv"):
-        client.get("/signout")
+    for index, storage in enumerate(("json", "csv")):
+        if index:
+            client.post(
+                "/signout", data={"csrf_token": csrf_from(client, "/dashboard")}
+            )
         signup_and_signin(client, storage, username=f"user_{storage}")
         resp = client.get("/all-reviews")
         assert resp.status_code == 200, storage
