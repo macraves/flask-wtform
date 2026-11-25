@@ -146,6 +146,20 @@ def test_users_route_shows_only_the_signed_in_user(client):
     assert f"/user-delete/{bob_id}" not in html
 
 
+def test_users_route_works_with_api_style_session_without_user_id(client):
+    """A session written by /api/login (no id in session user) still lists the own record."""
+    signup_and_signin(client, "sqlite", username="alice")
+    with client.session_transaction() as sess:
+        sess["user"] = {"username": "alice", "storage": "sqlite"}
+
+    response = client.get("/users")
+    html = response.get_data(as_text=True)
+
+    assert response.status_code == 200
+    assert "Alice Doe" in html
+    assert "/user-update/1" in html
+
+
 def test_api_session_cookie_and_cross_origin_policy_are_restricted(api_client):
     """Login cookies are restricted and API responses omit CORS headers."""
     api_client.post(

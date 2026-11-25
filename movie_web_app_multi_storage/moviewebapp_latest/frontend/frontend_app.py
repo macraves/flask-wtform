@@ -306,7 +306,7 @@ def user_delete(user_id):
 def list_users():
     """Render the users page."""
     user, storage = ffasm.get_user_and_storage()
-    current_user_record = storage.find_user(user_id=user.get("id"))
+    current_user_record = storage.find_user(user_id=current_user.id)
     users = [current_user_record] if current_user_record is not None else []
     return render_template("users.html", user=user, users=users)
 
