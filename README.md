@@ -1,6 +1,6 @@
 # Flask & Python Projects
 
-Eight small projects from my path into Python backend development: Flask web apps and APIs, SQLAlchemy models, and command-line tools. They are learning projects, not production systems. This page says what each one contains and where the rough edges are.
+Seven small projects from my path into Python backend development: Flask web apps and APIs, SQLAlchemy models, and command-line tools. They are learning projects, not production systems. This page says what each one contains and where the rough edges are.
 
 ## Flagship
 
@@ -36,13 +36,12 @@ Each project has its own `requirements.txt` and README. Entry points: `Best-Buy/
 
 I would rather list these than have a reviewer find them.
 
-- **Testing is thin outside the flagship.** `library_app_production` has 84 pytest tests and `Best-Buy` has 20 unit tests. The movie app's `test_backend.py` is a manual script that needs the server running. The other Flask apps, including the frozen `db_app_api/library_app`, have no tests.
-- **Admin in the flagship is a single flag.** `library_app_production` has an `is_admin` column set with `flask --app main make-admin <username>`; there are no finer roles. The frozen `db_app_api/library_app` still hard-codes user id `1` as the admin.
-- **Known bugs are documented, not all fixed.** `db_app_api/library_app` (frozen) still crashes on the book update page and on an empty search, and has the other flagship bugs that were fixed; the movie app's add-review route returns 500; `backend_api` never sorts by title or content. Each project README lists its own bugs with the file and line.
-- **Python version.** The flagship pins SQLAlchemy 2.0.31 and passes its tests on Python 3.12 and 3.14. `db_app_api/library_app` pins a release that does not import on Python 3.14 and was run on Python 3.12 only.
+- **Testing is thin outside the flagship.** `library_app_production` has 84 pytest tests and `Best-Buy` has 20 unit tests. The movie app's `test_backend.py` is a manual script that needs the server running. The other Flask apps have no tests.
+- **Admin in the flagship is a single flag.** `library_app_production` has an `is_admin` column set with `flask --app main make-admin <username>`; there are no finer roles.
+- **Known bugs are documented, not all fixed.** The movie app's add-review route returns 500; `backend_api` never sorts by title or content. Each project README lists its own bugs with the file and line.
+- **Python version.** The flagship pins SQLAlchemy 2.0.31 and passes its tests on Python 3.12 and 3.14.
 - **Plaintext passwords in the movie apps.** For JSON storage, `moviewebapp_latest` writes the password to `registry/registry.json` unhashed, and the older `using session` variant stores plaintext passwords throughout. `storage-app-user` and the library apps hash passwords.
-- **No migrations.** The flagship's unused Flask-Migrate wiring was removed; schema changes to an existing database are manual and documented in its README. `db_app_api/library_app` still initialises Flask-Migrate without a `migrations/` folder.
-- **A misleading name in the frozen copy.** In `db_app_api/library_app`, `MYSQL_URI` actually holds a SQLite path. Nothing here connects to MySQL.
+- **No migrations.** The flagship's unused Flask-Migrate wiring was removed; schema changes to an existing database are manual and documented in its README.
 - **Version handling in `backend_api` is simple.** A `VERSION` dictionary maps `"0"` to an in-memory post list and `"1.0"`, `"1.1"` and `"1.2"` to the same JSON loader. It is a version switch, not a schema-migration system.
 - **How the READMEs were checked.** Each project README was rewritten from the code, then re-checked by a second reviewer who ran the setup steps and the documented routes on a clean copy. Real OMDb and RapidAPI calls were not exercised (no keys were used), and `gunicorn` and the `Procfile` were not run.
 
