@@ -40,7 +40,7 @@ I would rather list these than have a reviewer find them.
 - **Admin in the flagship is a single flag.** `library_app_production` has an `is_admin` column set with `flask --app main make-admin <username>`; there are no finer roles.
 - **Known bugs are documented, not all fixed.** The movie app's add-review route returns 500; `backend_api` never sorts by title or content. Each project README lists its own bugs with the file and line.
 - **Python version.** The flagship pins SQLAlchemy 2.0.31 and passes its tests on Python 3.12 and 3.14.
-- **Plaintext passwords in the movie apps.** For JSON storage, `moviewebapp_latest` writes the password to `registry/registry.json` unhashed, and the older `using session` variant stores plaintext passwords throughout. `storage-app-user` and the library apps hash passwords.
+- **Plaintext passwords in the movie apps.** `moviewebapp_latest` hashes passwords now, but a `registry/registry.json` written before that fix can still hold plaintext (case OC014). `storage-app-user` and the library apps hash passwords.
 - **No migrations.** The flagship's unused Flask-Migrate wiring was removed; schema changes to an existing database are manual and documented in its README.
 - **Version handling in `backend_api` is simple.** A `VERSION` dictionary maps `"0"` to an in-memory post list and `"1.0"`, `"1.1"` and `"1.2"` to the same JSON loader. It is a version switch, not a schema-migration system.
 - **How the READMEs were checked.** Each project README was rewritten from the code, then re-checked by a second reviewer who ran the setup steps and the documented routes on a clean copy. Real OMDb and RapidAPI calls were not exercised (no keys were used), and `gunicorn` and the `Procfile` were not run.
