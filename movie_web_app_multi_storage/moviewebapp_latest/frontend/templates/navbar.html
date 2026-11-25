@@ -34,9 +34,10 @@
 					>
 				</li>
 				<li class="nav-item">
-					<a class="nav-link active" aria-current="page" href="{{ url_for('signout')}}"
-						>Sign Out</a
-					>
+					<form method="POST" action="{{ url_for('signout') }}" class="nav-link p-0">
+						<input type="hidden" name="csrf_token" value="{{ csrf_token() }}" />
+						<button type="submit" class="btn btn-link nav-link">Sign Out</button>
+					</form>
 				</li>
 				{% else %}
 				<li class="nav-item">

@@ -70,7 +70,7 @@ def test_other_user_cannot_delete(client, app):
     """A signed-in user cannot delete another user's movie (403)."""
     signup_and_signin(client, "sqlite", username="alice")
     add_movie(client)
-    client.get("/signout")
+    client.post("/signout", data={"csrf_token": csrf_from(client, "/dashboard")})
     signup_and_signin(client, "sqlite", username="mallory")
     token = csrf_from(client, "/movies/add")
     resp = client.post("/users/1/delete_movie/1", data={"csrf_token": token})

@@ -96,7 +96,7 @@ def test_legacy_plaintext_user_can_sign_in_and_is_rehashed(client):
     assert stored != "legacypw"
     assert stored.startswith(("scrypt:", "pbkdf2:"))
     # second sign-in verifies against the new hash
-    client.get("/signout")
+    client.post("/signout", data={"csrf_token": csrf_from(client, "/dashboard")})
     assert _signin(client, "legacypw").status_code == 302
 
 
