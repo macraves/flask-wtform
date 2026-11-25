@@ -172,7 +172,7 @@ These were checked in the code. Where a limitation says "confirmed", I reproduce
 - **Legacy date-string years.** Rows written by an earlier version may hold a date string in `publication_year`. They display and update fine, but the column is typed as an integer and SQLite does not enforce that.
 - **Posts are sanitised when rendered, not when stored.** Raw HTML is kept in the database.
 - **No password change or reset.** The dashboard and update forms do not touch the password (read from the code).
-- **Python versions.** SQLAlchemy 2.0.31 is the lowest 2.0 release that imports on Python 3.14 (2.0.30 and older failed; checked by installing each). The sibling project `db_app_api/library_app` still pins an older SQLAlchemy and does not import on 3.14.
+- **Python versions.** SQLAlchemy 2.0.31 is the lowest 2.0 release that imports on Python 3.14 (2.0.30 and older failed; checked by installing each).
 
 ## License
 
